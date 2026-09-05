@@ -191,19 +191,18 @@ class DeepCoreLedger:
         return sha256_obj(state if state is not None else self.state)
 
     @staticmethod
+    def _proposal_body(block: Block) -> dict[str, Any]:
+        return {"height": block.height, "previous_hash": block.previous_hash, "state_root": block.state_root, "event_root": block.event_root, "validator_votes": list(block.validator_votes)}
+
+    @staticmethod
     def _block_body(block: Block) -> dict[str, Any]:
-        body = {
-            "height": block.height,
-            "previous_hash": block.previous_hash,
-            "state_root": block.state_root,
-            "event_root": block.event_root,
-            "validator_votes": list(block.validator_votes),
-        }
+        body = DeepCoreLedger._proposal_body(block)
         if block.quorum_certificate is not None:
             body["quorum_certificate_digest"] = block.quorum_certificate.digest
         return body
 
-    def commit(self, voters: list[str], quorum_certificate: Any | None = None) -> Block:
+    def prepare_block(self, voters: list[str]) -> Block:
+        """Construct the exact proposal that validators should sign, without committing it."""
         if not self.events:
             raise ValueError("no pending events")
         unique = set(voters)
@@ -213,30 +212,36 @@ class DeepCoreLedger:
             raise ValueError("unknown validator vote")
         if not self.weighted_quorum_met(voters):
             raise ValueError("weighted quorum not met")
-
         pending = tuple(self.events)
         candidate = {k: dict(v) for k, v in self.state.items()}
         for event in pending:
             self._apply(event, candidate)
-
         previous_hash = self.blocks[-1].block_hash if self.blocks else ZERO_HASH
-        event_root = merkle_root([e.event_id for e in pending])
-        next_root = self.state_root(candidate)
         body = {
             "height": len(self.blocks) + 1,
             "previous_hash": previous_hash,
-            "state_root": next_root,
-            "event_root": event_root,
+            "state_root": self.state_root(candidate),
+            "event_root": merkle_root([e.event_id for e in pending]),
             "validator_votes": sorted(unique),
         }
+        return Block(body["height"], previous_hash, body["state_root"], body["event_root"], tuple(body["validator_votes"]), pending, sha256_obj(body), None)
+
+    def commit(self, voters: list[str], quorum_certificate: Any | None = None) -> Block:
+        proposal = self.prepare_block(voters)
         if quorum_certificate is not None:
-            if quorum_certificate.height != body["height"]:
+            if quorum_certificate.height != proposal.height:
                 raise ValueError("quorum certificate height mismatch")
-            if quorum_certificate.block_hash != sha256_obj(body):
-                raise ValueError("quorum certificate block hash mismatch")
+            proposal_hash = sha256_obj(self._proposal_body(proposal))
+            if quorum_certificate.proposal_hash != proposal_hash:
+                raise ValueError("quorum certificate proposal hash mismatch")
+            body = self._proposal_body(proposal)
             body["quorum_certificate_digest"] = quorum_certificate.digest
-        block_hash = sha256_obj(body)
-        block = Block(body["height"], previous_hash, next_root, event_root, tuple(sorted(unique)), pending, block_hash, quorum_certificate)
+            block = Block(proposal.height, proposal.previous_hash, proposal.state_root, proposal.event_root, proposal.validator_votes, proposal.events, sha256_obj(body), quorum_certificate)
+        else:
+            block = proposal
+        candidate = {k: dict(v) for k, v in self.state.items()}
+        for event in block.events:
+            self._apply(event, candidate)
         self.state = candidate
         self.blocks.append(block)
         self.events.clear()
@@ -277,11 +282,11 @@ def main() -> None:
     ledger = DeepCoreLedger(validators)
     tx = Transaction("validator_A", "validator_B", 100_000, 1_000, 1, "validator_A").sign_ed25519(identities["validator_A"])
     event = ledger.append_ed25519(tx, registry)
-    block = ledger.commit(validators[:3])
+    proposal = ledger.prepare_block(validators[:3])
     consensus = SignedQuorumCertificate(validators)
-    votes = [consensus.sign_vote(v, block, 0, identities[v]) for v in validators[:3]]
-    certificate = consensus.build_certificate(block, 0, votes, registry)
-
+    votes = [consensus.sign_vote(v, proposal, 0, identities[v]) for v in validators[:3]]
+    certificate = consensus.build_certificate(proposal, 0, votes, registry)
+    block = ledger.commit(validators[:3], certificate)
     score, category = ledger.ssil_risk(tx)
     print("=== DeepCore Runtime Evidence ===")
     print(f"validators={len(validators)} f={ledger.f} quorum={ledger.quorum}")
@@ -291,7 +296,7 @@ def main() -> None:
     print(f"state_root={block.state_root}")
     print(f"block_hash={block.block_hash}")
     print(f"qc_digest={certificate.digest}")
-    print(f"qc_verified={consensus.verify_certificate(block, certificate, registry)}")
+    print(f"qc_verified={consensus.verify_certificate(proposal, certificate, registry)}")
     print(f"ssil_score={score} category={category}")
     print("ed25519_signature_verified=True")
     print("chain_commitment_verified=True")
