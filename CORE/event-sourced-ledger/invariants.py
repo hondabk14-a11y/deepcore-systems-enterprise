@@ -29,8 +29,10 @@ def verify_event_chain(records: Iterable[dict[str, Any]]) -> None:
 
 
 def verify_domain_events(records: Iterable[dict[str, Any]]) -> None:
-    """Verify that reducer-domain events carry valid non-negative integer amounts."""
+    """Verify reducer-domain events without repeating structural verification."""
     for index, record in enumerate(records):
+        if not isinstance(record, dict):
+            raise InvariantViolation(f"record {index} is not an object")
         kind = record.get("event")
         if kind not in {"CREDIT", "DEBIT"}:
             raise InvariantViolation(f"record {index} has unsupported event type: {kind!r}")
@@ -40,7 +42,7 @@ def verify_domain_events(records: Iterable[dict[str, Any]]) -> None:
 
 
 def verify_invariants(records: Iterable[dict[str, Any]]) -> None:
-    """Apply all reference invariants to an already ordered event stream."""
+    """Apply structural and domain invariants to an ordered event stream."""
     materialized = list(records)
     verify_event_chain(materialized)
     verify_domain_events(materialized)
