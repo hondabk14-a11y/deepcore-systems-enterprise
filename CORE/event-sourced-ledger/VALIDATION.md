@@ -19,7 +19,9 @@ A failure at any earlier gate prevents later processing.
 
 `EventSourcedLedger.replay()` always performs structural verification. It accepts an optional validator for domain-specific invariants.
 
-`reduce_ledger()` supplies `verify_invariants` as that validator. This keeps the base ledger reusable while making the reducer path fail closed on invalid domain history.
+`reduce_ledger()` supplies `verify_domain_events` as its validator because structural verification has already completed inside `replay()`. This keeps validation staged and avoids repeating the same hash-chain check.
+
+`verify_invariants()` remains available as a standalone full validation function when callers need to validate an already-materialized event stream outside the replay path.
 
 ## Security properties
 
