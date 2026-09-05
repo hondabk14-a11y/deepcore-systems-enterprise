@@ -11,7 +11,7 @@ permissions:
 
 jobs:
   verify:
-    name: Runtime, cryptography, consensus, transport, persistence, SSIL, and UST verification
+    name: Runtime, cryptography, consensus, transport, persistence, fault recovery, SSIL, and UST verification
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
@@ -39,6 +39,7 @@ jobs:
           tests/test_deepcore_hotstuff.py
           tests/test_deepcore_transport.py
           tests/test_deepcore_persistence.py
+          tests/test_deepcore_fault_injection.py
           tests/test_deepcore_ssil_systemic_integrity.py
           tests/test_ust_settlement.py
           tests/test_ust_ssil_gate.py
