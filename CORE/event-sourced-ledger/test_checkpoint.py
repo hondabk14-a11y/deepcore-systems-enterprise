@@ -13,7 +13,7 @@ class TestCheckpoint(unittest.TestCase):
         try:
             ledger.append({"event": "CREDIT", "amount": 100})
             ledger.append({"event": "DEBIT", "amount": 25})
-            expected = checkpoint(ledger)
+            expected = checkpoint(ledger, ledger_id="ledger-A")
 
             lines = ledger.path.read_text(encoding="utf-8").splitlines()
             ledger.path.write_text(lines[0] + "\n", encoding="utf-8")
@@ -28,8 +28,10 @@ class TestCheckpoint(unittest.TestCase):
         ledger = EventSourcedLedger(Path(tmp.name) / "events.jsonl")
         try:
             ledger.append({"event": "CREDIT", "amount": 100})
-            expected = checkpoint(ledger)
+            expected = checkpoint(ledger, ledger_id="ledger-A")
             verify_checkpoint(ledger, expected)
+            self.assertEqual(expected.ledger_id, "ledger-A")
+            self.assertEqual(expected.sequence, 1)
         finally:
             tmp.cleanup()
 
@@ -38,10 +40,27 @@ class TestCheckpoint(unittest.TestCase):
         ledger = EventSourcedLedger(Path(tmp.name) / "events.jsonl")
         try:
             ledger.append({"event": "CREDIT", "amount": 100})
-            expected = checkpoint(ledger)
+            expected = checkpoint(ledger, ledger_id="ledger-A")
             ledger.append({"event": "CREDIT", "amount": 1})
             with self.assertRaises(CheckpointMismatch):
                 verify_checkpoint(ledger, expected)
+        finally:
+            tmp.cleanup()
+
+    def test_checkpoint_binds_expected_ledger_identity(self):
+        tmp = tempfile.TemporaryDirectory()
+        ledger = EventSourcedLedger(Path(tmp.name) / "events.jsonl")
+        try:
+            ledger.append({"event": "CREDIT", "amount": 100})
+            expected = checkpoint(ledger, ledger_id="ledger-A")
+            wrong_identity = expected.__class__(
+                ledger_id="ledger-B",
+                sequence=expected.sequence,
+                head_hash=expected.head_hash,
+                event_count=expected.event_count,
+            )
+            with self.assertRaises(CheckpointMismatch):
+                verify_checkpoint(ledger, wrong_identity)
         finally:
             tmp.cleanup()
 
