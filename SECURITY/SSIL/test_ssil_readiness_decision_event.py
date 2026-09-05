@@ -20,9 +20,7 @@ from ssil_readiness_decision_event import (  # noqa: E402
 class SSILReadinessDecisionEventTests(unittest.TestCase):
     def test_decision_is_bound_to_evidence_event(self) -> None:
         decision = build_decision_event(
-            SSILEvidence(),
-            policy_version="ssil-policy/1.0.0",
-            event_sequence=7,
+            SSILEvidence(), policy_version="ssil-policy/1.0.0", event_sequence=7
         )
         event = build_readiness_decision_event("b" * 64, decision)
         validate_readiness_decision_event(event)
@@ -54,7 +52,19 @@ class SSILReadinessDecisionEventTests(unittest.TestCase):
         decision = build_decision_event(
             SSILEvidence(), policy_version="ssil-policy/1.0.0", event_sequence=1
         )
-        decision.decision = "FAIL_CLOSED"  # type: ignore[misc]
+        tampered = decision.__class__(
+            event_type=decision.event_type,
+            policy_version=decision.policy_version,
+            evidence_hash=decision.evidence_hash,
+            event_sequence=decision.event_sequence,
+            decision="FAIL_CLOSED",
+            reason_codes=decision.reason_codes,
+            evaluator_version=decision.evaluator_version,
+        )
+        with self.assertRaises(ValueError):
+            validate_readiness_decision_event(
+                build_readiness_decision_event("e" * 64, tampered)
+            )
 
     def test_frozen_link_event_cannot_mutate(self) -> None:
         decision = build_decision_event(
