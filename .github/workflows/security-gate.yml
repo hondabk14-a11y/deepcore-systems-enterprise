@@ -11,19 +11,50 @@ permissions:
   contents: read
   security-events: write
 
+concurrency:
+  group: security-gate-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
-  codeql:
-    name: CodeQL Python Analysis
+  security:
+    name: Security Gate
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 20
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Initialize CodeQL
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: pip
+          cache-dependency-path: requirements-test.txt
+
+      - name: Install test dependencies
+        run: python -m pip install -r CORE/event-sourced-ledger/requirements-test.txt
+
+      - name: CodeQL initialization
         uses: github/codeql-action/init@v3
         with:
           languages: python
 
-      - name: Analyze
+      - name: Syntax compile check
+        run: |
+          python -m py_compile CORE/event-sourced-ledger/ledger.py
+          python -m py_compile CORE/event-sourced-ledger/test_ledger.py
+
+      - name: Run ledger tests
+        run: python -m unittest discover -s CORE/event-sourced-ledger -p 'test_*.py' -v
+
+      - name: Tracked secret-path check
+        shell: bash
+        run: |
+          set -euo pipefail
+          if git ls-files | grep -E '(^|/)(\.env($|\.)|.*\.(pem|key|p12|pfx|jks)$|(^|/)(secrets|credentials|wallets)/)'; then
+            echo 'Potential secret-bearing tracked path detected.' >&2
+            exit 1
+          fi
+
+      - name: CodeQL analysis
         uses: github/codeql-action/analyze@v3
