@@ -81,7 +81,7 @@ def test_rollback_is_rejected(tmp_path: Path):
 
 def test_wrapper_restores_hotstuff_state(tmp_path: Path):
     machine = type("Machine", (), {})()
-    machine.state = HotStuffState(0, Phase.PROPOSE)
+    machine.state = state()
     wrapper = PersistentHotStuffStateMachine(machine, ConsensusSnapshotStore(tmp_path / "state.json"))
     wrapper.save({"v0": 3})
 
