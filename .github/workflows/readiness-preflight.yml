@@ -1,0 +1,56 @@
+name: DeepCore Readiness Preflight
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: readiness-preflight-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  readiness-preflight:
+    name: Readiness preflight controls
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Compile readiness gate scripts
+        run: python -m py_compile PRODUCTION-READINESS-GATES/*.py
+
+      - name: Infrastructure preflight
+        run: python PRODUCTION-READINESS-GATES/infrastructure-health-check.py
+
+      - name: Key custody boundary preflight
+        run: python PRODUCTION-READINESS-GATES/key-custody-check.py
+
+      - name: Synthetic backup and restore test
+        run: python PRODUCTION-READINESS-GATES/backup-restore-check.py
+
+      - name: Synthetic rollback test
+        run: python PRODUCTION-READINESS-GATES/rollback-check.py
+
+      - name: Observability contract preflight
+        run: python PRODUCTION-READINESS-GATES/observability-check.py
+
+      - name: Gate summary
+        run: python PRODUCTION-READINESS-GATES/gate-summary.py
+
+      - name: Production certification boundary
+        run: |
+          echo 'Readiness preflight controls executed successfully.'
+          echo 'This workflow does not certify production infrastructure, HSM/KMS custody, disaster recovery, rollback, or live observability.'
+          echo 'Production certification remains NOT CERTIFIED until environment-specific evidence is independently verified.'
