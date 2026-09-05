@@ -1,6 +1,23 @@
 const vscode = require('vscode');
-const cp = require('child_process');
+const fs = require('fs');
 const path = require('path');
+
+function findBridgeScript() {
+  const folders = vscode.workspace.workspaceFolders || [];
+  for (const folder of folders) {
+    const candidate = path.join(
+      folder.uri.fsPath,
+      'AI',
+      'deepcore-ai-bridge',
+      'src',
+      'deepcore-ai-bridge.mjs'
+    );
+    if (fs.existsSync(candidate)) {
+      return candidate;
+    }
+  }
+  return null;
+}
 
 function activate(context) {
   const command = vscode.commands.registerCommand('deepcore.reviewFile', () => {
@@ -10,10 +27,15 @@ function activate(context) {
       return;
     }
 
-    const filePath = editor.document.uri.fsPath;
-    const bridgeDir = path.resolve(context.extensionPath, '..');
-    const script = path.join(bridgeDir, 'src', 'deepcore-ai-bridge.mjs');
+    const script = findBridgeScript();
+    if (!script) {
+      vscode.window.showErrorMessage(
+        'DeepCore: repository bridge not found. Open the DeepCore Systems Enterprise repository as the VS Code workspace.'
+      );
+      return;
+    }
 
+    const filePath = editor.document.uri.fsPath;
     const terminal = vscode.window.createTerminal({ name: 'DeepCore AI Review' });
     terminal.show(true);
     terminal.sendText(`node ${JSON.stringify(script)} review ${JSON.stringify(filePath)}`);
