@@ -1,0 +1,1 @@
+DeepCore Systems Enterprise production gate is enabled in GitHub Actions. The gate runs on main pushes and pull requests and validates the event-sourced ledger test suite, Python compilation, secret-file detection, and core repository controls.
