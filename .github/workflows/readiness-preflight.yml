@@ -52,6 +52,9 @@ jobs:
       - name: Run SSIL readiness adversarial suite
         run: python -m unittest discover -s SECURITY/SSIL -p 'test_ssil*.py' -v
 
+      - name: Run readiness SSIL audit-record tests
+        run: python -m unittest PRODUCTION-READINESS-GATES/test-write-readiness-ssil-audit-record.py -v
+
       - name: Build machine-readable evidence manifest
         env:
           GITHUB_SHA: ${{ github.sha }}
@@ -96,6 +99,9 @@ jobs:
       - name: Verify readiness SSIL audit chain
         run: python PRODUCTION-READINESS-GATES/verify-readiness-ssil-chain.py readiness-evidence-manifest.json
 
+      - name: Write machine-readable SSIL audit record
+        run: python PRODUCTION-READINESS-GATES/write-readiness-ssil-audit-record.py readiness-evidence-manifest.json readiness-ssil-audit-record.json
+
       - name: Upload readiness evidence artifact
         uses: actions/upload-artifact@v4
         with:
@@ -103,6 +109,7 @@ jobs:
           path: |
             readiness-evidence-manifest.json
             readiness-gate-summary.txt
+            readiness-ssil-audit-record.json
           if-no-files-found: error
           retention-days: 30
 
@@ -112,5 +119,6 @@ jobs:
           echo 'Evidence manifest was structurally verified before artifact upload.'
           echo 'Readiness evidence was bound to an SSIL decision and verified through an event-sourced audit chain.'
           echo 'SSIL adversarial regression tests executed as part of readiness preflight.'
+          echo 'Machine-readable SSIL audit evidence was generated for the workflow artifact.'
           echo 'This workflow does not certify production infrastructure, HSM/KMS custody, disaster recovery, rollback, or live observability.'
           echo 'Production certification remains NOT CERTIFIED until environment-specific evidence is independently verified.'
