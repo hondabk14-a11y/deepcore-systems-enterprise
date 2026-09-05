@@ -87,6 +87,9 @@ jobs:
           )
           PY
 
+      - name: Verify evidence manifest
+        run: python PRODUCTION-READINESS-GATES/verify-evidence-manifest.py readiness-evidence-manifest.json
+
       - name: Upload readiness evidence artifact
         uses: actions/upload-artifact@v4
         with:
@@ -100,6 +103,6 @@ jobs:
       - name: Production certification boundary
         run: |
           echo 'Readiness preflight controls executed successfully.'
-          echo 'Evidence artifact contains execution metadata and control results.'
+          echo 'Evidence manifest was structurally verified before artifact upload.'
           echo 'This workflow does not certify production infrastructure, HSM/KMS custody, disaster recovery, rollback, or live observability.'
           echo 'Production certification remains NOT CERTIFIED until environment-specific evidence is independently verified.'
