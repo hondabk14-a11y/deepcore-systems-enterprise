@@ -1,6 +1,6 @@
 # Production Gate Runbook
 
-1. Push or merge a change into `main`, or start `DeepCore Production Gate V3` manually with `workflow_dispatch`.
+1. Push or merge a change into `main`, or start `DeepCore Production Gate` manually with `workflow_dispatch`.
 2. Require a successful Production Gate run before release.
 3. Confirm ledger tests and compilation pass.
 4. Confirm tracked-secret detection passes.
