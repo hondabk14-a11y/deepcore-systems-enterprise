@@ -1,0 +1,68 @@
+name: DeepCore Production Readiness Preflight
+
+on:
+  push:
+    branches:
+      - archive/deepcore-library-2026-09-v2
+    paths:
+      - '.github/workflows/production-readiness-preflight.yml'
+      - 'ARCHIVE/**'
+      - 'CORE/**'
+  pull_request:
+    paths:
+      - '.github/workflows/production-readiness-preflight.yml'
+      - 'ARCHIVE/**'
+      - 'CORE/**'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  preflight:
+    name: Deterministic readiness preflight
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Verify repository safety baseline
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -f README.md
+          test -f ARCHIVE/SOURCE_RESTORATION_MANIFEST_2026-09-05.md
+          if find . -type f \( -name '*.pem' -o -name '*.key' -o -name '*.p12' -o -name '*.pfx' -o -name '*.seed' -o -name '*.mnemonic' \) -not -path './.git/*' | grep -q .; then
+            echo 'Sensitive key material detected in repository tree.' >&2
+            exit 1
+          fi
+
+      - name: Verify no compiled Python artifacts
+        shell: bash
+        run: |
+          set -euo pipefail
+          if find . -type f \( -name '*.pyc' -o -name '*.pyo' \) -not -path './.git/*' | grep -q .; then
+            echo 'Compiled Python artifacts must not enter canonical source.' >&2
+            exit 1
+          fi
+          if find . -type d -name '__pycache__' -not -path './.git/*' | grep -q .; then
+            echo '__pycache__ directories must not enter canonical source.' >&2
+            exit 1
+          fi
+
+      - name: Run Python syntax validation
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 -m compileall -q CORE 2>/dev/null || {
+            echo 'Python syntax validation failed for CORE.' >&2
+            exit 1
+          }
+          find CORE -type d -name '__pycache__' -prune -exec rm -rf {} +
+
+      - name: Report readiness boundary
+        shell: bash
+        run: |
+          echo 'PRECHECK=PASS'
+          echo 'PRODUCTION_READY=NOT_CLAIMED'
+          echo 'Reason: this workflow validates repository hygiene and syntax only; deployment, security, integration, and runtime evidence remain required.'
