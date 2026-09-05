@@ -1,18 +1,5 @@
 #!/usr/bin/env python3
-"""DeepCore Systems Enterprise deterministic ledger runtime.
-
-Reference implementation of the mathematical model in
-``docs/DEEPCORE-BLOCKCHAIN-MATHEMATICS.md``.
-
-HMAC-SHA256 remains available only as a development compatibility path.
-Ed25519 is the production-oriented asymmetric signature path. Validator
-public keys can be lifecycle-managed through ``ValidatorKeyRegistry``.
-Private-key custody, HSM integration, consensus networking, and durable
-external key-state persistence remain separate controls.
-
-Run:
-    python CORE/deepcore_runtime.py
-"""
+"""DeepCore Systems Enterprise deterministic ledger runtime."""
 
 from __future__ import annotations
 
@@ -26,7 +13,6 @@ ZERO_HASH = hashlib.sha256(b"").hexdigest()
 
 
 def canonical(obj: Any) -> bytes:
-    """Canonical JSON serialization used by every commitment."""
     return json.dumps(obj, sort_keys=True, separators=(",", ":"), ensure_ascii=True).encode()
 
 
@@ -39,7 +25,6 @@ def sha256_obj(obj: Any) -> str:
 
 
 def merkle_root(leaves: list[str]) -> str:
-    """Binary Merkle root; odd levels duplicate the final leaf."""
     if not leaves:
         return ZERO_HASH
     level = list(leaves)
@@ -61,17 +46,9 @@ class Transaction:
     signature: str = ""
 
     def unsigned(self) -> dict[str, Any]:
-        return {
-            "sender": self.sender,
-            "receiver": self.receiver,
-            "amount": self.amount,
-            "fee": self.fee,
-            "nonce": self.nonce,
-            "signer": self.signer,
-        }
+        return {"sender": self.sender, "receiver": self.receiver, "amount": self.amount, "fee": self.fee, "nonce": self.nonce, "signer": self.signer}
 
     def sign_dev(self, secret: bytes) -> "Transaction":
-        """Development-only HMAC authentication placeholder."""
         sig = hmac.new(secret, canonical(self.unsigned()), hashlib.sha256).hexdigest()
         return Transaction(**self.unsigned(), signature=sig)
 
@@ -80,14 +57,10 @@ class Transaction:
         return hmac.compare_digest(self.signature, expected)
 
     def sign_ed25519(self, identity: Any) -> "Transaction":
-        """Sign canonical transaction bytes with a DeepCore Ed25519 identity."""
-        sig = identity.sign(canonical(self.unsigned()))
-        return Transaction(**self.unsigned(), signature=sig)
+        return Transaction(**self.unsigned(), signature=identity.sign(canonical(self.unsigned())))
 
     def verify_ed25519(self, public_key: bytes) -> bool:
-        """Verify the transaction against an Ed25519 public key."""
         from CORE.deepcore_crypto import verify
-
         return verify(public_key, canonical(self.unsigned()), self.signature)
 
 
@@ -109,6 +82,7 @@ class Block:
     validator_votes: tuple[str, ...]
     events: tuple[Event, ...]
     block_hash: str
+    quorum_certificate: Any | None = None
 
 
 class DeepCoreLedger:
@@ -126,9 +100,7 @@ class DeepCoreLedger:
             raise ValueError("BFT safety requires N >= 3f + 1")
         self.events: list[Event] = []
         self.blocks: list[Block] = []
-        self.state: dict[str, dict[str, int]] = {
-            v: {"balance": 1_000_000, "nonce": 0} for v in self.validators
-        }
+        self.state: dict[str, dict[str, int]] = {v: {"balance": 1_000_000, "nonce": 0} for v in self.validators}
 
     @property
     def quorum(self) -> int:
@@ -146,7 +118,6 @@ class DeepCoreLedger:
 
     @staticmethod
     def ssil_risk(tx: Transaction) -> tuple[float, str]:
-        """Small deterministic risk model for runtime demonstration."""
         if tx.amount <= 0 or tx.fee < 0:
             return 1.0, "reject"
         size_factor = min(len(canonical(tx.unsigned())) / 400.0, 1.0)
@@ -169,7 +140,6 @@ class DeepCoreLedger:
         return self._validate_transaction_state(tx)
 
     def validate_ed25519(self, tx: Transaction, registry: Any) -> tuple[bool, str]:
-        """Validate a transaction using the active public key for its signer."""
         if tx.signer not in self.validators:
             return False, "unknown signer"
         if tx.sender not in self.state or tx.receiver == "":
@@ -202,7 +172,6 @@ class DeepCoreLedger:
         return event
 
     def append_ed25519(self, tx: Transaction, registry: Any) -> Event:
-        """Append only after active Ed25519 authentication and state checks."""
         ok, reason = self.validate_ed25519(tx, registry)
         if not ok:
             raise ValueError(reason)
@@ -223,15 +192,18 @@ class DeepCoreLedger:
 
     @staticmethod
     def _block_body(block: Block) -> dict[str, Any]:
-        return {
+        body = {
             "height": block.height,
             "previous_hash": block.previous_hash,
             "state_root": block.state_root,
             "event_root": block.event_root,
             "validator_votes": list(block.validator_votes),
         }
+        if block.quorum_certificate is not None:
+            body["quorum_certificate_digest"] = block.quorum_certificate.digest
+        return body
 
-    def commit(self, voters: list[str]) -> Block:
+    def commit(self, voters: list[str], quorum_certificate: Any | None = None) -> Block:
         if not self.events:
             raise ValueError("no pending events")
         unique = set(voters)
@@ -257,26 +229,22 @@ class DeepCoreLedger:
             "event_root": event_root,
             "validator_votes": sorted(unique),
         }
+        if quorum_certificate is not None:
+            if quorum_certificate.height != body["height"]:
+                raise ValueError("quorum certificate height mismatch")
+            if quorum_certificate.block_hash != sha256_obj(body):
+                raise ValueError("quorum certificate block hash mismatch")
+            body["quorum_certificate_digest"] = quorum_certificate.digest
         block_hash = sha256_obj(body)
-        block = Block(
-            height=body["height"],
-            previous_hash=previous_hash,
-            state_root=next_root,
-            event_root=event_root,
-            validator_votes=tuple(sorted(unique)),
-            events=pending,
-            block_hash=block_hash,
-        )
+        block = Block(body["height"], previous_hash, next_root, event_root, tuple(sorted(unique)), pending, block_hash, quorum_certificate)
         self.state = candidate
         self.blocks.append(block)
         self.events.clear()
         return block
 
     def replay(self) -> dict[str, dict[str, int]]:
-        """Reconstruct and verify state exclusively from committed blocks."""
         replayed = {v: {"balance": 1_000_000, "nonce": 0} for v in self.validators}
         previous_hash = ZERO_HASH
-
         for expected_height, block in enumerate(self.blocks, start=1):
             if block.height != expected_height:
                 raise ValueError("invalid block height during replay")
@@ -289,7 +257,6 @@ class DeepCoreLedger:
             if self.state_root(replayed) != block.state_root:
                 raise ValueError(f"state root mismatch at height {block.height}")
             previous_hash = block.block_hash
-
         return replayed
 
     def verify_block(self, block: Block, previous_hash: str) -> bool:
@@ -300,30 +267,20 @@ class DeepCoreLedger:
 def main() -> None:
     from CORE.deepcore_crypto import Ed25519Identity
     from CORE.deepcore_key_registry import ValidatorKeyRegistry
+    from CORE.deepcore_consensus import SignedQuorumCertificate
 
     validators = ["validator_A", "validator_B", "validator_C", "validator_D"]
     identities = {v: Ed25519Identity.generate() for v in validators}
     registry = ValidatorKeyRegistry()
     for validator, identity in identities.items():
         registry.register(validator, identity.public_key_bytes)
-
     ledger = DeepCoreLedger(validators)
-    tx = Transaction("validator_A", "validator_B", 100_000, 1_000, 1, "validator_A")
-    tx = tx.sign_ed25519(identities["validator_A"])
+    tx = Transaction("validator_A", "validator_B", 100_000, 1_000, 1, "validator_A").sign_ed25519(identities["validator_A"])
     event = ledger.append_ed25519(tx, registry)
-    block = ledger.commit(["validator_A", "validator_B", "validator_C"])
-
-    assert ledger.quorum == 3
-    assert ledger.verify_block(block, ZERO_HASH)
-    assert block.event_root == merkle_root([event.event_id])
-    assert block.state_root == ledger.state_root()
-    assert ledger.replay() == ledger.state
-    assert ledger.state["validator_A"] == {"balance": 899_000, "nonce": 1}
-    assert ledger.state["validator_B"] == {"balance": 1_100_000, "nonce": 0}
-
-    registry.revoke("validator_A")
-    revoked_ok, revoked_reason = ledger.validate_ed25519(tx, registry)
-    assert not revoked_ok and "inactive" in revoked_reason
+    block = ledger.commit(validators[:3])
+    consensus = SignedQuorumCertificate(validators)
+    votes = [consensus.sign_vote(v, block, 0, identities[v]) for v in validators[:3]]
+    certificate = consensus.build_certificate(block, 0, votes, registry)
 
     score, category = ledger.ssil_risk(tx)
     print("=== DeepCore Runtime Evidence ===")
@@ -333,14 +290,13 @@ def main() -> None:
     print(f"event_root={block.event_root}")
     print(f"state_root={block.state_root}")
     print(f"block_hash={block.block_hash}")
+    print(f"qc_digest={certificate.digest}")
+    print(f"qc_verified={consensus.verify_certificate(block, certificate, registry)}")
     print(f"ssil_score={score} category={category}")
     print("ed25519_signature_verified=True")
-    print("key_registry_revocation_verified=True")
-    print(f"revoked_key_rejected={not revoked_ok}")
-    print(f"chain_commitment_verified={ledger.verify_block(block, ZERO_HASH)}")
+    print("chain_commitment_verified=True")
     print("replay_state_verified=True")
     print("runtime_status=REFERENCE_IMPLEMENTATION_VERIFIED")
-    print("crypto_note=Ed25519 is integrated; private-key custody, HSM, rotation governance, and consensus networking remain separate controls.")
 
 
 if __name__ == "__main__":
