@@ -47,10 +47,59 @@ jobs:
         run: python PRODUCTION-READINESS-GATES/observability-check.py
 
       - name: Gate summary
-        run: python PRODUCTION-READINESS-GATES/gate-summary.py
+        run: python PRODUCTION-READINESS-GATES/gate-summary.py | tee readiness-gate-summary.txt
+
+      - name: Build machine-readable evidence manifest
+        env:
+          GITHUB_SHA: ${{ github.sha }}
+          GITHUB_RUN_ID: ${{ github.run_id }}
+          GITHUB_RUN_ATTEMPT: ${{ github.run_attempt }}
+          GITHUB_REF_NAME: ${{ github.ref_name }}
+          GITHUB_EVENT_NAME: ${{ github.event_name }}
+        run: |
+          python - <<'PY'
+          import json
+          import os
+          from pathlib import Path
+
+          manifest = {
+              "schema_version": "1.0",
+              "evidence_type": "readiness-preflight",
+              "repository": os.environ["GITHUB_REPOSITORY"],
+              "commit_sha": os.environ["GITHUB_SHA"],
+              "ref": os.environ["GITHUB_REF_NAME"],
+              "event": os.environ["GITHUB_EVENT_NAME"],
+              "workflow_run_id": int(os.environ["GITHUB_RUN_ID"]),
+              "workflow_run_attempt": int(os.environ["GITHUB_RUN_ATTEMPT"]),
+              "controls": {
+                  "infrastructure": "preflight-executed",
+                  "key_custody": "boundary-preflight-executed",
+                  "backup_restore": "synthetic-test-executed",
+                  "rollback": "synthetic-test-executed",
+                  "observability": "contract-preflight-executed",
+              },
+              "certification": "NOT_CERTIFIED",
+              "external_evidence_required": True,
+          }
+          Path("readiness-evidence-manifest.json").write_text(
+              json.dumps(manifest, indent=2, sort_keys=True) + "\n",
+              encoding="utf-8",
+          )
+          PY
+
+      - name: Upload readiness evidence artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: deepcore-readiness-evidence-${{ github.run_id }}-${{ github.run_attempt }}
+          path: |
+            readiness-evidence-manifest.json
+            readiness-gate-summary.txt
+          if-no-files-found: error
+          retention-days: 30
 
       - name: Production certification boundary
         run: |
           echo 'Readiness preflight controls executed successfully.'
+          echo 'Evidence artifact contains execution metadata and control results.'
           echo 'This workflow does not certify production infrastructure, HSM/KMS custody, disaster recovery, rollback, or live observability.'
           echo 'Production certification remains NOT CERTIFIED until environment-specific evidence is independently verified.'
