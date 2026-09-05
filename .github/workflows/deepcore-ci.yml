@@ -11,7 +11,7 @@ permissions:
 
 jobs:
   verify:
-    name: Runtime, cryptography, consensus, transport, and persistence verification
+    name: Runtime, cryptography, consensus, transport, persistence, SSIL, and UST verification
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
@@ -30,5 +30,16 @@ jobs:
       - name: Execute reference runtime
         run: python CORE/deepcore_runtime.py
 
-      - name: Run runtime, cryptography, consensus, HotStuff, transport, and persistence tests
-        run: python -m pytest -q tests/test_deepcore_runtime.py tests/test_deepcore_crypto.py tests/test_deepcore_consensus.py tests/test_deepcore_hotstuff.py tests/test_deepcore_transport.py tests/test_deepcore_persistence.py
+      - name: Run DeepCore and UST verification suite
+        run: >-
+          python -m pytest -q
+          tests/test_deepcore_runtime.py
+          tests/test_deepcore_crypto.py
+          tests/test_deepcore_consensus.py
+          tests/test_deepcore_hotstuff.py
+          tests/test_deepcore_transport.py
+          tests/test_deepcore_persistence.py
+          tests/test_deepcore_ssil_systemic_integrity.py
+          tests/test_ust_settlement.py
+          tests/test_ust_ssil_gate.py
+          tests/test_ust_controller.py
