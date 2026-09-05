@@ -90,6 +90,9 @@ jobs:
       - name: Verify evidence manifest
         run: python PRODUCTION-READINESS-GATES/verify-evidence-manifest.py readiness-evidence-manifest.json
 
+      - name: Verify readiness SSIL audit chain
+        run: python PRODUCTION-READINESS-GATES/verify-readiness-ssil-chain.py readiness-evidence-manifest.json
+
       - name: Upload readiness evidence artifact
         uses: actions/upload-artifact@v4
         with:
@@ -104,5 +107,6 @@ jobs:
         run: |
           echo 'Readiness preflight controls executed successfully.'
           echo 'Evidence manifest was structurally verified before artifact upload.'
+          echo 'Readiness evidence was bound to an SSIL decision and verified through an event-sourced audit chain.'
           echo 'This workflow does not certify production infrastructure, HSM/KMS custody, disaster recovery, rollback, or live observability.'
           echo 'Production certification remains NOT CERTIFIED until environment-specific evidence is independently verified.'
