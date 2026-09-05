@@ -12,7 +12,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent
 GATES = {
-    "CI": "production-gate.yml",
+    "CI": "../.github/workflows/production-gate.yml",
     "Security / CodeQL": "../.github/workflows/security-gate.yml",
     "VSIX packaging": "../.github/workflows/extension-package.yml",
     "Infrastructure": "infrastructure-health-check.py",
