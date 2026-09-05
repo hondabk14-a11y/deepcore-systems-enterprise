@@ -1,0 +1,22 @@
+name: DeepCore Runtime Verification
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install test dependency
+        run: python -m pip install --upgrade pytest
+      - name: Execute reference runtime
+        run: python CORE/deepcore_runtime.py
+      - name: Run adversarial tests
+        run: python -m pytest -q tests/test_deepcore_runtime.py
