@@ -4,6 +4,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Any, Iterable
 
+from invariants import replay_validated
 from ledger import EventSourcedLedger
 
 
@@ -38,5 +39,5 @@ def reduce_events(events: Iterable[dict[str, Any]], initial: LedgerState | None 
 
 
 def reduce_ledger(ledger: EventSourcedLedger, initial: LedgerState | None = None) -> LedgerState:
-    """Verify and replay a persisted ledger, then deterministically reduce it."""
-    return reduce_events(ledger.replay(), initial=initial)
+    """Pass persisted history through the invariant boundary before reducing it."""
+    return reduce_events(replay_validated(ledger), initial=initial)
