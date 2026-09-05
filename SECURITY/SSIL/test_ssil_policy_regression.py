@@ -10,13 +10,13 @@ from ssil_engine import Decision, Reason, SSILEvidence, evaluate
 class SSILPolicyRegressionTests(unittest.TestCase):
     def base(self, **overrides: object) -> SSILEvidence:
         values = {
-            "crypto_verified": True,
-            "ledger_integrity_verified": True,
-            "consensus_verified": True,
-            "authorization_verified": True,
-            "security_controls_verified": True,
-            "recovery_controls_verified": True,
-            "secret_boundary_verified": True,
+            "cryptography_valid": True,
+            "ledger_integrity_valid": True,
+            "consensus_valid": True,
+            "authorization_valid": True,
+            "security_controls_valid": True,
+            "recovery_controls_valid": True,
+            "secret_boundary_valid": True,
             "evidence_complete": True,
             "high_risk_signals": (),
         }
@@ -45,13 +45,13 @@ class SSILPolicyRegressionTests(unittest.TestCase):
 
     def test_mandatory_fail_closed_matrix(self) -> None:
         cases = (
-            ("crypto", "crypto_verified", Reason.CRYPTOGRAPHIC_FAILURE),
-            ("ledger", "ledger_integrity_verified", Reason.LEDGER_INTEGRITY_FAILURE),
-            ("consensus", "consensus_verified", Reason.CONSENSUS_FAILURE),
-            ("authorization", "authorization_verified", Reason.AUTHORIZATION_FAILURE),
-            ("security", "security_controls_verified", Reason.SECURITY_CONTROL_FAILURE),
-            ("recovery", "recovery_controls_verified", Reason.RECOVERY_CONTROL_FAILURE),
-            ("secret-boundary", "secret_boundary_verified", Reason.SECRET_BOUNDARY_FAILURE),
+            ("crypto", "cryptography_valid", Reason.CRYPTOGRAPHIC_FAILURE),
+            ("ledger", "ledger_integrity_valid", Reason.LEDGER_INTEGRITY_FAILURE),
+            ("consensus", "consensus_valid", Reason.CONSENSUS_FAILURE),
+            ("authorization", "authorization_valid", Reason.AUTHORIZATION_FAILURE),
+            ("security", "security_controls_valid", Reason.SECURITY_CONTROL_FAILURE),
+            ("recovery", "recovery_controls_valid", Reason.RECOVERY_CONTROL_FAILURE),
+            ("secret-boundary", "secret_boundary_valid", Reason.SECRET_BOUNDARY_FAILURE),
         )
         for label, field, reason in cases:
             with self.subTest(control=label):
@@ -59,7 +59,7 @@ class SSILPolicyRegressionTests(unittest.TestCase):
 
     def test_fail_closed_precedes_high_risk_review(self) -> None:
         evidence = self.base(
-            ledger_integrity_verified=False,
+            ledger_integrity_valid=False,
             high_risk_signals=("critical-anomaly",),
         )
         result = evaluate(evidence)
@@ -67,9 +67,10 @@ class SSILPolicyRegressionTests(unittest.TestCase):
         self.assertIn(Reason.LEDGER_INTEGRITY_FAILURE, result.reasons)
         self.assertNotEqual(result.decision, Decision.REVIEW)
 
-    def test_empty_high_risk_signal_entries_are_not_treated_as_risk(self) -> None:
+    def test_nonempty_high_risk_signals_require_review(self) -> None:
         result = evaluate(self.base(high_risk_signals=("", "  ")))
-        self.assertEqual(result.decision, Decision.ALLOW)
+        self.assertEqual(result.decision, Decision.REVIEW)
+        self.assertIn(Reason.HIGH_RISK_SIGNAL, result.reasons)
 
 
 if __name__ == "__main__":
