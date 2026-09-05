@@ -4,6 +4,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Any, Iterable
 
+from checkpoint import LedgerCheckpoint, verify_checkpoint
 from invariants import verify_domain_events
 from ledger import EventSourcedLedger
 
@@ -38,6 +39,16 @@ def reduce_events(events: Iterable[dict[str, Any]], initial: LedgerState | None 
     return state
 
 
-def reduce_ledger(ledger: EventSourcedLedger, initial: LedgerState | None = None) -> LedgerState:
-    """Validate persisted history before deterministic reduction."""
+def reduce_ledger(
+    ledger: EventSourcedLedger,
+    initial: LedgerState | None = None,
+    checkpoint_anchor: LedgerCheckpoint | None = None,
+) -> LedgerState:
+    """Validate persisted history before deterministic reduction.
+
+    When an external checkpoint anchor is supplied, replay completeness is
+    enforced before any domain event can affect derived state.
+    """
+    if checkpoint_anchor is not None:
+        verify_checkpoint(ledger, checkpoint_anchor)
     return reduce_events(ledger.replay(validator=verify_domain_events), initial=initial)
