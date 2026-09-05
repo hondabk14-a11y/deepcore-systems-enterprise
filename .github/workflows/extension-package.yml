@@ -29,14 +29,24 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: '20'
-          cache: npm
-          cache-dependency-path: AI/deepcore-ai-bridge/vscode-extension/package-lock.json
 
       - name: Install extension tooling
         run: npm install
 
+      - name: Validate extension entrypoint
+        run: node --check extension.js
+
       - name: Package VSIX
         run: npm run package
+
+      - name: Validate VSIX contents
+        shell: bash
+        run: |
+          set -euo pipefail
+          vsix=$(find . -maxdepth 1 -type f -name '*.vsix' -print -quit)
+          test -n "$vsix"
+          unzip -l "$vsix" | tee /tmp/vsix-contents.txt
+          ! grep -E '(^|/)(\.env($|\.)|.*\.(pem|key|p12|pfx|jks)$|(^|/)(secrets|credentials|wallets)/)' /tmp/vsix-contents.txt
 
       - name: Upload VSIX artifact
         uses: actions/upload-artifact@v4
