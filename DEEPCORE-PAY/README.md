@@ -1,13 +1,25 @@
 # DeepCore Pay
 
-DeepCore Pay architecture includes a Swift client package with NFC tap handling, `L3Invoice`, and `DC02Proof` structures.
+DeepCore Pay is the project's payment-interface architecture spanning local device payment handling, DeepCore settlement logic, and external Bitcoin settlement.
 
-Security boundaries include Secure Enclave integration, HSM public-key identity, and an `l3RPC` endpoint.
+## Reference components
 
-Layering:
+- Swift client/package integration.
+- NFC tap handler.
+- `L3Invoice` payment representation.
+- `DC02Proof` integrity/anchoring evidence.
+- Secure Enclave integration for device-bound key operations where supported.
+- HSM-backed public-key identity at protected enterprise signing boundaries.
+- `l3RPC` enterprise service interface.
 
-- L1: Bitcoin trustless settlement/anchoring
-- L2: DeepCore sovereign state and HSM-backed identity
-- L3: enterprise payment services with required compliance controls
+## Layer model
 
-Edge-network integration, including future 6G scenarios, remains subject to security and deployment validation.
+- **L1: Bitcoin** — trust-minimized external settlement and independently verifiable chain state.
+- **L2: DeepCore sovereign layer** — event-sourced state, cryptographic identity, deterministic processing, and protected signing/HSM boundaries.
+- **L3: DeepCore Pay enterprise** — application/payment services with authorization, audit, reconciliation, and applicable compliance controls.
+
+## Security requirements
+
+Payment authorization, key custody, replay protection, invoice handling, device binding, and reconciliation must be explicitly tested. Private keys, wallet seeds, credentials, and production secrets must never be committed.
+
+Edge-network integration, including 6G scenarios, remains an architectural exploration until security, interoperability, and deployment validation are complete.
