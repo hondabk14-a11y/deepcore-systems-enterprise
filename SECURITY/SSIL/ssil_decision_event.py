@@ -12,7 +12,7 @@ import hashlib
 import json
 from typing import Any
 
-from ssil_engine import Decision, SSILEvidence, SSILDecision, evaluate
+from ssil_engine import Decision, Reason, SSILEvidence, SSILDecision, evaluate
 
 
 EVENT_TYPE = "SSIL_DECISION"
@@ -96,12 +96,14 @@ def build_decision_event(
 
 
 def validate_decision_event(event: SSILDecisionEvent) -> None:
-    """Reject structurally invalid decision events."""
+    """Reject structurally invalid or semantically contradictory decision events."""
+    if not isinstance(event, SSILDecisionEvent):
+        raise TypeError("event must be an SSILDecisionEvent instance")
     if event.event_type != EVENT_TYPE:
         raise ValueError("invalid event_type")
-    if not event.policy_version.strip():
+    if not isinstance(event.policy_version, str) or not event.policy_version.strip():
         raise ValueError("policy_version must be non-empty")
-    if len(event.evidence_hash) != 64:
+    if not isinstance(event.evidence_hash, str) or len(event.evidence_hash) != 64:
         raise ValueError("evidence_hash must be a SHA-256 hex digest")
     try:
         int(event.evidence_hash, 16)
@@ -111,7 +113,30 @@ def validate_decision_event(event: SSILDecisionEvent) -> None:
         raise ValueError("event_sequence must be a non-negative integer")
     if event.decision not in {item.value for item in Decision}:
         raise ValueError("invalid decision")
-    if not event.reason_codes:
-        raise ValueError("reason_codes must be non-empty")
-    if not event.evaluator_version.strip():
+    if not isinstance(event.reason_codes, tuple) or not event.reason_codes:
+        raise ValueError("reason_codes must be a non-empty tuple")
+    valid_reasons = {item.value for item in Reason}
+    if any(not isinstance(code, str) or code not in valid_reasons for code in event.reason_codes):
+        raise ValueError("reason_codes contains an invalid reason")
+    if not isinstance(event.evaluator_version, str) or not event.evaluator_version.strip():
         raise ValueError("evaluator_version must be non-empty")
+
+    reasons = set(event.reason_codes)
+    if event.decision == Decision.ALLOW.value and reasons != {Reason.POLICY_SATISFIED.value}:
+        raise ValueError("ALLOW requires POLICY_SATISFIED")
+    if event.decision == Decision.REVIEW.value and reasons != {Reason.HIGH_RISK_SIGNAL.value}:
+        raise ValueError("REVIEW requires HIGH_RISK_SIGNAL")
+    if event.decision == Decision.DEFER.value and reasons != {Reason.EVIDENCE_INCOMPLETE.value}:
+        raise ValueError("DEFER requires EVIDENCE_INCOMPLETE")
+    if event.decision == Decision.FAIL_CLOSED.value:
+        failure_reasons = {
+            Reason.CRYPTOGRAPHIC_FAILURE.value,
+            Reason.LEDGER_INTEGRITY_FAILURE.value,
+            Reason.CONSENSUS_FAILURE.value,
+            Reason.AUTHORIZATION_FAILURE.value,
+            Reason.SECURITY_CONTROL_FAILURE.value,
+            Reason.RECOVERY_CONTROL_FAILURE.value,
+            Reason.SECRET_BOUNDARY_FAILURE.value,
+        }
+        if not reasons.issubset(failure_reasons):
+            raise ValueError("FAIL_CLOSED contains non-failure reason codes")
