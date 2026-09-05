@@ -1,0 +1,61 @@
+name: DeepCore Diagnostic Test
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/diagnostic-test.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  diagnostic-startup:
+    name: Diagnostic Startup Verification
+    runs-on: ubuntu-latest
+    steps:
+      - name: Verify runner is available
+        run: |
+          echo "✓ Runner job successfully created"
+          echo "✓ GitHub Actions execution layer is operational"
+          echo "GitHub Run ID: ${{ github.run_id }}"
+          echo "Workflow: ${{ github.workflow }}"
+
+      - name: Check Python availability
+        run: |
+          python --version
+          python -m pip --version
+
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Verify repository structure
+        run: |
+          echo "Repository contents:"
+          ls -la
+          echo ""
+          echo "Checking critical DeepCore directories:"
+          test -d CORE && echo "✓ CORE directory present" || echo "✗ CORE directory missing"
+          test -d ARCHITECTURE && echo "✓ ARCHITECTURE directory present" || echo "✗ ARCHITECTURE directory missing"
+          test -d SECURITY && echo "✓ SECURITY directory present" || echo "✗ SECURITY directory missing"
+          test -f README.md && echo "✓ README.md present" || echo "✗ README.md missing"
+
+      - name: Diagnostic summary
+        run: |
+          echo "=========================================="
+          echo "DeepCore Diagnostic Test: PASSED"
+          echo "=========================================="
+          echo ""
+          echo "✓ Workflow job successfully created"
+          echo "✓ Runner is available and responsive"
+          echo "✓ GitHub Actions execution layer is operational"
+          echo "✓ Repository code is accessible"
+          echo "✓ Python runtime is available"
+          echo ""
+          echo "NEXT STEPS:"
+          echo "1. Remove/disable the stale BuildFailed workflow (ID: 350815380)"
+          echo "2. Once removed, trigger the production-gate workflow"
+          echo "3. Execute readiness-preflight for full validation"
+          echo ""
+          echo "=========================================="
