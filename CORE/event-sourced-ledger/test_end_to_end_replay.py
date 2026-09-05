@@ -2,7 +2,7 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from ledger import EventSourcedLedger
+from ledger import EventSourcedLedger, LedgerIntegrityError
 from reducer import LedgerState, reduce_ledger
 
 
@@ -26,7 +26,7 @@ class TestEndToEndReplay(unittest.TestCase):
             ledger.append({"event": "CREDIT", "amount": 50})
             path.write_text(path.read_text() + "{not-json}\n")
 
-            with self.assertRaises(Exception):
+            with self.assertRaises(LedgerIntegrityError):
                 reduce_ledger(ledger)
 
 
