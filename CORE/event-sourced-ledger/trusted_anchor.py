@@ -7,7 +7,7 @@ checkpoint verification layer.
 """
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Protocol
 
 from checkpoint import LedgerCheckpoint
@@ -29,16 +29,17 @@ class AnchorNotFound(ValueError):
 class InMemoryCheckpointAnchor:
     """Reference provider for tests and local deterministic experiments."""
 
-    _checkpoint: LedgerCheckpoint | None = None
+    _checkpoints: dict[str, LedgerCheckpoint] = field(default_factory=dict)
 
-    def retain(self, checkpoint: LedgerCheckpoint) -> None:
-        self._checkpoint = checkpoint
+    def retain(self, ledger_id: str, checkpoint: LedgerCheckpoint) -> None:
+        if not ledger_id:
+            raise ValueError("ledger_id is required")
+        self._checkpoints[ledger_id] = checkpoint
 
     def get_checkpoint(self, ledger_id: str) -> LedgerCheckpoint | None:
-        checkpoint = self._checkpoint
-        if checkpoint is None or checkpoint.ledger_id != ledger_id:
+        if not ledger_id:
             return None
-        return checkpoint
+        return self._checkpoints.get(ledger_id)
 
 
 def resolve_checkpoint_anchor(
@@ -52,6 +53,4 @@ def resolve_checkpoint_anchor(
     checkpoint = provider.get_checkpoint(ledger_id)
     if checkpoint is None:
         raise AnchorNotFound(f"no retained checkpoint for ledger {ledger_id!r}")
-    if checkpoint.ledger_id != ledger_id:
-        raise AnchorNotFound(f"checkpoint identity mismatch for ledger {ledger_id!r}")
     return checkpoint
