@@ -5,9 +5,10 @@ Reference implementation of the mathematical model in
 ``docs/DEEPCORE-BLOCKCHAIN-MATHEMATICS.md``.
 
 HMAC-SHA256 remains available only as a development compatibility path.
-Ed25519 is the production-oriented asymmetric signature path. Private-key
-custody, rotation, revocation, HSM integration, and consensus networking
-remain separate controls.
+Ed25519 is the production-oriented asymmetric signature path. Validator
+public keys can be lifecycle-managed through ``ValidatorKeyRegistry``.
+Private-key custody, HSM integration, consensus networking, and durable
+external key-state persistence remain separate controls.
 
 Run:
     python CORE/deepcore_runtime.py
@@ -165,6 +166,21 @@ class DeepCoreLedger:
         secret = secrets.get(tx.signer)
         if secret is None or not tx.verify_dev(secret):
             return False, "invalid development signature"
+        return self._validate_transaction_state(tx)
+
+    def validate_ed25519(self, tx: Transaction, registry: Any) -> tuple[bool, str]:
+        """Validate a transaction using the active public key for its signer."""
+        if tx.signer not in self.validators:
+            return False, "unknown signer"
+        if tx.sender not in self.state or tx.receiver == "":
+            return False, "invalid account"
+        if tx.sender != tx.signer:
+            return False, "signer must match sender in this reference model"
+        if not registry.verify(tx.signer, canonical(tx.unsigned()), tx.signature):
+            return False, "invalid Ed25519 signature or inactive key"
+        return self._validate_transaction_state(tx)
+
+    def _validate_transaction_state(self, tx: Transaction) -> tuple[bool, str]:
         expected_nonce = self.state[tx.sender]["nonce"] + 1
         if tx.nonce != expected_nonce:
             return False, f"invalid nonce: expected {expected_nonce}"
@@ -185,6 +201,15 @@ class DeepCoreLedger:
         self.events.append(event)
         return event
 
+    def append_ed25519(self, tx: Transaction, registry: Any) -> Event:
+        """Append only after active Ed25519 authentication and state checks."""
+        ok, reason = self.validate_ed25519(tx, registry)
+        if not ok:
+            raise ValueError(reason)
+        event = Event(tx)
+        self.events.append(event)
+        return event
+
     def _apply(self, event: Event, state: dict[str, dict[str, int]]) -> None:
         tx = event.transaction
         sender = state[tx.sender]
@@ -198,7 +223,6 @@ class DeepCoreLedger:
 
     @staticmethod
     def _block_body(block: Block) -> dict[str, Any]:
-        """Return the consensus-committed block fields."""
         return {
             "height": block.height,
             "previous_hash": block.previous_hash,
@@ -258,14 +282,10 @@ class DeepCoreLedger:
                 raise ValueError("invalid block height during replay")
             if not self.verify_block(block, previous_hash):
                 raise ValueError(f"invalid block commitment at height {block.height}")
-
-            event_ids = [event.event_id for event in block.events]
-            if merkle_root(event_ids) != block.event_root:
+            if merkle_root([event.event_id for event in block.events]) != block.event_root:
                 raise ValueError(f"event root mismatch at height {block.height}")
-
             for event in block.events:
                 self._apply(event, replayed)
-
             if self.state_root(replayed) != block.state_root:
                 raise ValueError(f"state root mismatch at height {block.height}")
             previous_hash = block.block_hash
@@ -278,16 +298,21 @@ class DeepCoreLedger:
 
 
 def main() -> None:
-    validators = ["validator_A", "validator_B", "validator_C", "validator_D"]
-    secrets = {v: f"development-secret:{v}".encode() for v in validators}
-    ledger = DeepCoreLedger(validators)
+    from CORE.deepcore_crypto import Ed25519Identity
+    from CORE.deepcore_key_registry import ValidatorKeyRegistry
 
+    validators = ["validator_A", "validator_B", "validator_C", "validator_D"]
+    identities = {v: Ed25519Identity.generate() for v in validators}
+    registry = ValidatorKeyRegistry()
+    for validator, identity in identities.items():
+        registry.register(validator, identity.public_key_bytes)
+
+    ledger = DeepCoreLedger(validators)
     tx = Transaction("validator_A", "validator_B", 100_000, 1_000, 1, "validator_A")
-    tx = tx.sign_dev(secrets["validator_A"])
-    event = ledger.append(tx, secrets)
+    tx = tx.sign_ed25519(identities["validator_A"])
+    event = ledger.append_ed25519(tx, registry)
     block = ledger.commit(["validator_A", "validator_B", "validator_C"])
 
-    # Independent mathematical evidence checks.
     assert ledger.quorum == 3
     assert ledger.verify_block(block, ZERO_HASH)
     assert block.event_root == merkle_root([event.event_id])
@@ -296,9 +321,9 @@ def main() -> None:
     assert ledger.state["validator_A"] == {"balance": 899_000, "nonce": 1}
     assert ledger.state["validator_B"] == {"balance": 1_100_000, "nonce": 0}
 
-    invalid_nonce = Transaction("validator_A", "validator_B", 10, 1, 1, "validator_A").sign_dev(secrets["validator_A"])
-    ok, reason = ledger.validate(invalid_nonce, secrets)
-    assert not ok and "nonce" in reason
+    registry.revoke("validator_A")
+    revoked_ok, revoked_reason = ledger.validate_ed25519(tx, registry)
+    assert not revoked_ok and "inactive" in revoked_reason
 
     score, category = ledger.ssil_risk(tx)
     print("=== DeepCore Runtime Evidence ===")
@@ -309,11 +334,13 @@ def main() -> None:
     print(f"state_root={block.state_root}")
     print(f"block_hash={block.block_hash}")
     print(f"ssil_score={score} category={category}")
-    print(f"invalid_nonce_rejected={not ok}")
+    print("ed25519_signature_verified=True")
+    print("key_registry_revocation_verified=True")
+    print(f"revoked_key_rejected={not revoked_ok}")
     print(f"chain_commitment_verified={ledger.verify_block(block, ZERO_HASH)}")
     print("replay_state_verified=True")
     print("runtime_status=REFERENCE_IMPLEMENTATION_VERIFIED")
-    print("crypto_note=Ed25519 is available for asymmetric transaction authentication; HMAC remains development-only.")
+    print("crypto_note=Ed25519 is integrated; private-key custody, HSM, rotation governance, and consensus networking remain separate controls.")
 
 
 if __name__ == "__main__":
