@@ -11,7 +11,7 @@ permissions:
 
 jobs:
   verify:
-    name: Runtime, cryptography, and consensus verification
+    name: Runtime, cryptography, consensus, and transport verification
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
@@ -30,5 +30,5 @@ jobs:
       - name: Execute reference runtime
         run: python CORE/deepcore_runtime.py
 
-      - name: Run runtime, cryptography, and consensus tests
-        run: python -m pytest -q tests/test_deepcore_runtime.py tests/test_deepcore_crypto.py tests/test_deepcore_consensus.py tests/test_deepcore_hotstuff.py
+      - name: Run runtime, cryptography, consensus, HotStuff, and transport tests
+        run: python -m pytest -q tests/test_deepcore_runtime.py tests/test_deepcore_crypto.py tests/test_deepcore_consensus.py tests/test_deepcore_hotstuff.py tests/test_deepcore_transport.py
