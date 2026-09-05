@@ -1,0 +1,1 @@
+The production gate is an automated release barrier. A successful workflow run is required evidence for the checks it contains, but it does not certify the entire distributed system without independent infrastructure, key-custody, operational, recovery, and rollback validation.
