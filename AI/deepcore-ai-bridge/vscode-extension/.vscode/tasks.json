@@ -1,0 +1,15 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "DeepCore: Package VSIX",
+      "type": "shell",
+      "command": "npx",
+      "args": ["@vscode/vsce", "package", "--no-dependencies"],
+      "options": {
+        "cwd": "${workspaceFolder}/AI/deepcore-ai-bridge/vscode-extension"
+      },
+      "problemMatcher": []
+    }
+  ]
+}
