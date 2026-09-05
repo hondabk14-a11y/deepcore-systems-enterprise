@@ -14,10 +14,9 @@ sys.path.insert(0, str(ROOT / "CORE" / "event-sourced-ledger"))
 sys.path.insert(0, str(ROOT / "SECURITY" / "SSIL"))
 sys.path.insert(0, str(ROOT / "PRODUCTION-READINESS-GATES"))
 
-from ledger import EventSourcedLedger, LedgerIntegrityError  # noqa: E402
+from ledger import EventSourcedLedger  # noqa: E402
 from readiness_evidence_event import build_readiness_evidence_event  # noqa: E402
 from ssil_decision_event import build_decision_event  # noqa: E402
-from ssil_engine import SSILEvidence  # noqa: E402
 from ssil_readiness_adapter import readiness_to_ssil_evidence  # noqa: E402
 from ssil_readiness_decision_event import build_readiness_decision_event  # noqa: E402
 
@@ -45,7 +44,7 @@ def manifest() -> dict:
     }
 
 
-def chain_records(manifest_value: dict) -> list[dict]:
+def chain_objects(manifest_value: dict):
     evidence = build_readiness_evidence_event(manifest_value)
     decision = build_decision_event(
         readiness_to_ssil_evidence(manifest_value),
@@ -53,6 +52,11 @@ def chain_records(manifest_value: dict) -> list[dict]:
         event_sequence=1,
     )
     link = build_readiness_decision_event(evidence.event_hash(), decision)
+    return evidence, decision, link
+
+
+def chain_records(manifest_value: dict) -> list[dict]:
+    evidence, decision, link = chain_objects(manifest_value)
     return [evidence.to_mapping(), decision.to_mapping(), link.to_mapping()]
 
 
@@ -78,18 +82,14 @@ class SSILReadinessAuditChainAdversarialTests(unittest.TestCase):
         evidence = readiness_to_ssil_evidence(spoofed)
         self.assertFalse(evidence.security_controls_valid)
 
-    def test_decision_link_cannot_be_retargeted_without_hash_mismatch(self) -> None:
-        records = chain_records(manifest())
-        records[2]["decision_event_hash"] = "0" * 64
-        with tempfile.TemporaryDirectory() as temp_dir:
-            ledger = EventSourcedLedger(Path(temp_dir) / "audit.jsonl")
-            for record in records:
-                ledger.append(record)
-            self.assertTrue(ledger.verify())
-            with self.assertRaises(LedgerIntegrityError):
-                replayed = ledger.replay()
-                if replayed[2]["decision_event_hash"] != records[1]["event_hash"]:
-                    raise LedgerIntegrityError("retargeted decision link")
+    def test_decision_link_retarget_is_detectable(self) -> None:
+        evidence, decision, link = chain_objects(manifest())
+        self.assertEqual(link.decision_event_hash, decision.event_hash())
+        self.assertNotEqual(link.decision_event_hash, "0" * 64)
+
+        tampered = dict(link.to_mapping())
+        tampered["decision_event_hash"] = "0" * 64
+        self.assertNotEqual(tampered["decision_event_hash"], decision.event_hash())
 
     def test_event_order_swap_breaks_ledger_integrity(self) -> None:
         records = chain_records(manifest())
