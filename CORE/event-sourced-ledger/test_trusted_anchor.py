@@ -18,8 +18,8 @@ class TestTrustedCheckpointAnchor(unittest.TestCase):
         tmp, ledger = self._ledger()
         try:
             anchor = InMemoryCheckpointAnchor()
-            expected = checkpoint(ledger, ledger_id="ledger-A")
-            anchor.retain(expected)
+            expected = checkpoint(ledger)
+            anchor.retain("ledger-A", expected)
 
             resolved = resolve_checkpoint_anchor(anchor, ledger_id="ledger-A")
             self.assertEqual(resolved, expected)
@@ -31,7 +31,7 @@ class TestTrustedCheckpointAnchor(unittest.TestCase):
         tmp, ledger = self._ledger()
         try:
             anchor = InMemoryCheckpointAnchor()
-            anchor.retain(checkpoint(ledger, ledger_id="ledger-A"))
+            anchor.retain("ledger-A", checkpoint(ledger))
 
             with self.assertRaises(AnchorNotFound):
                 resolve_checkpoint_anchor(anchor, ledger_id="ledger-B")
@@ -47,8 +47,8 @@ class TestTrustedCheckpointAnchor(unittest.TestCase):
         tmp, ledger = self._ledger()
         try:
             anchor = InMemoryCheckpointAnchor()
-            expected = checkpoint(ledger, ledger_id="ledger-A")
-            anchor.retain(expected)
+            expected = checkpoint(ledger)
+            anchor.retain("ledger-A", expected)
 
             ledger.append({"event": "CREDIT", "amount": 1})
             resolved = resolve_checkpoint_anchor(anchor, ledger_id="ledger-A")
