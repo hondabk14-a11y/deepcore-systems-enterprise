@@ -7,6 +7,7 @@ from typing import Any, Iterable
 from checkpoint import LedgerCheckpoint, verify_checkpoint
 from invariants import verify_domain_events
 from ledger import EventSourcedLedger
+from trusted_anchor import TrustedCheckpointAnchor, resolve_checkpoint_anchor
 
 
 class ReducerError(ValueError):
@@ -46,9 +47,21 @@ def reduce_ledger(
 ) -> LedgerState:
     """Validate persisted history before deterministic reduction.
 
-    When an external checkpoint anchor is supplied, replay completeness is
-    enforced before any domain event can affect derived state.
+    When an externally retained checkpoint is supplied directly, replay
+    completeness is enforced before any domain event can affect derived state.
     """
     if checkpoint_anchor is not None:
         verify_checkpoint(ledger, checkpoint_anchor)
     return reduce_events(ledger.replay(validator=verify_domain_events), initial=initial)
+
+
+def reduce_ledger_from_anchor(
+    ledger: EventSourcedLedger,
+    anchor: TrustedCheckpointAnchor,
+    *,
+    ledger_id: str,
+    initial: LedgerState | None = None,
+) -> LedgerState:
+    """Resolve a retained checkpoint through the explicit trust boundary."""
+    checkpoint_anchor = resolve_checkpoint_anchor(anchor, ledger_id=ledger_id)
+    return reduce_ledger(ledger, initial=initial, checkpoint_anchor=checkpoint_anchor)
