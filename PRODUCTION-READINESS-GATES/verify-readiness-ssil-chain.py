@@ -19,11 +19,14 @@ sys.path.insert(0, str(ROOT / "SECURITY" / "SSIL"))
 from ledger import EventSourcedLedger, LedgerIntegrityError  # noqa: E402
 from readiness_evidence_event import build_readiness_evidence_event  # noqa: E402
 from ssil_decision_event import build_decision_event, validate_decision_event  # noqa: E402
-from ssil_engine import SSILEvidence  # noqa: E402
+from ssil_readiness_adapter import readiness_to_ssil_evidence  # noqa: E402
 from ssil_readiness_decision_event import (  # noqa: E402
     build_readiness_decision_event,
     validate_readiness_decision_event,
 )
+
+
+POLICY_VERSION = "ssil-policy/1.0.0"
 
 
 def load_manifest(path: Path) -> dict[str, Any]:
@@ -35,8 +38,11 @@ def load_manifest(path: Path) -> dict[str, Any]:
 
 def verify_chain(manifest: dict[str, Any]) -> str:
     evidence = build_readiness_evidence_event(manifest)
+    ssil_evidence = readiness_to_ssil_evidence(manifest)
     decision = build_decision_event(
-        SSILEvidence(), policy_version="ssil-policy/1.0.0", event_sequence=1
+        ssil_evidence,
+        policy_version=POLICY_VERSION,
+        event_sequence=1,
     )
     validate_decision_event(decision)
     link = build_readiness_decision_event(evidence.event_hash(), decision)
@@ -56,10 +62,20 @@ def verify_chain(manifest: dict[str, Any]) -> str:
         replayed = ledger.replay()
         if len(replayed) != 3:
             raise LedgerIntegrityError("unexpected audit-chain length")
+        if replayed[0]["event_type"] != "READINESS_EVIDENCE":
+            raise LedgerIntegrityError("missing readiness evidence event")
+        if replayed[1]["event_type"] != "SSIL_DECISION":
+            raise LedgerIntegrityError("missing SSIL decision event")
+        if replayed[2]["event_type"] != "SSIL_READINESS_DECISION":
+            raise LedgerIntegrityError("missing SSIL readiness link event")
+        if replayed[1]["evidence_hash"] != decision.evidence_hash:
+            raise LedgerIntegrityError("decision evidence hash changed after replay")
         if replayed[2]["evidence_event_hash"] != evidence.event_hash():
             raise LedgerIntegrityError("evidence hash link mismatch after replay")
         if replayed[2]["decision_event_hash"] != decision.event_hash():
             raise LedgerIntegrityError("decision hash link mismatch after replay")
+        if replayed[2]["decision"] != decision.decision:
+            raise LedgerIntegrityError("decision value mismatch after replay")
 
     return link.event_hash()
 
