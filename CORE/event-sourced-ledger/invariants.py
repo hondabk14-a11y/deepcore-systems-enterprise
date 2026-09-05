@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from typing import Any, Iterable
 
-from ledger import GENESIS, event_hash
+from ledger import GENESIS, EventSourcedLedger, event_hash
 
 
 class InvariantViolation(ValueError):
@@ -44,3 +44,10 @@ def verify_invariants(records: Iterable[dict[str, Any]]) -> None:
     materialized = list(records)
     verify_event_chain(materialized)
     verify_domain_events(materialized)
+
+
+def replay_validated(ledger: EventSourcedLedger) -> list[dict[str, Any]]:
+    """Read persisted history only after the complete invariant boundary passes."""
+    records = ledger.replay()
+    verify_invariants(records)
+    return records
