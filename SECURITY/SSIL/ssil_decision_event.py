@@ -10,9 +10,9 @@ from __future__ import annotations
 from dataclasses import dataclass
 import hashlib
 import json
-from typing import Any, Mapping
+from typing import Any
 
-from ssil_engine import SSILEvidence, SSILDecision, evaluate
+from ssil_engine import Decision, SSILEvidence, SSILDecision, evaluate
 
 
 EVENT_TYPE = "SSIL_DECISION"
@@ -40,9 +40,7 @@ class SSILDecisionEvent:
         }
 
     def canonical_json(self) -> str:
-        return json.dumps(
-            self.to_mapping(), sort_keys=True, separators=(",", ":")
-        )
+        return json.dumps(self.to_mapping(), sort_keys=True, separators=(",", ":"))
 
     def event_hash(self) -> str:
         return hashlib.sha256(self.canonical_json().encode("utf-8")).hexdigest()
@@ -51,13 +49,13 @@ class SSILDecisionEvent:
 def _canonical_evidence(evidence: SSILEvidence) -> str:
     return json.dumps(
         {
-            "crypto_verified": evidence.crypto_verified,
-            "ledger_integrity_verified": evidence.ledger_integrity_verified,
-            "consensus_verified": evidence.consensus_verified,
-            "authorization_verified": evidence.authorization_verified,
-            "security_controls_verified": evidence.security_controls_verified,
-            "recovery_controls_verified": evidence.recovery_controls_verified,
-            "secret_boundary_verified": evidence.secret_boundary_verified,
+            "cryptography_valid": evidence.cryptography_valid,
+            "ledger_integrity_valid": evidence.ledger_integrity_valid,
+            "consensus_valid": evidence.consensus_valid,
+            "authorization_valid": evidence.authorization_valid,
+            "security_controls_valid": evidence.security_controls_valid,
+            "recovery_controls_valid": evidence.recovery_controls_valid,
+            "secret_boundary_valid": evidence.secret_boundary_valid,
             "evidence_complete": evidence.evidence_complete,
             "high_risk_signals": list(evidence.high_risk_signals),
         },
@@ -84,9 +82,7 @@ def build_decision_event(
         raise ValueError("event_sequence must be non-negative")
 
     decision: SSILDecision = evaluate(evidence)
-    evidence_hash = hashlib.sha256(
-        _canonical_evidence(evidence).encode("utf-8")
-    ).hexdigest()
+    evidence_hash = hashlib.sha256(_canonical_evidence(evidence).encode("utf-8")).hexdigest()
 
     return SSILDecisionEvent(
         event_type=EVENT_TYPE,
@@ -111,9 +107,9 @@ def validate_decision_event(event: SSILDecisionEvent) -> None:
         int(event.evidence_hash, 16)
     except ValueError as exc:
         raise ValueError("evidence_hash must be hexadecimal") from exc
-    if isinstance(event.event_sequence, bool) or event.event_sequence < 0:
-        raise ValueError("event_sequence must be non-negative")
-    if event.decision not in {item.value for item in __import__("ssil_engine").Decision}:
+    if isinstance(event.event_sequence, bool) or not isinstance(event.event_sequence, int) or event.event_sequence < 0:
+        raise ValueError("event_sequence must be a non-negative integer")
+    if event.decision not in {item.value for item in Decision}:
         raise ValueError("invalid decision")
     if not event.reason_codes:
         raise ValueError("reason_codes must be non-empty")
