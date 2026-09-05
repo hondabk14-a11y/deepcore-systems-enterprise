@@ -1,0 +1,27 @@
+{
+  "name": "deepcore-ai-bridge",
+  "displayName": "DeepCore AI Bridge",
+  "description": "Read-only OpenAI engineering review commands for DeepCore Systems Enterprise.",
+  "version": "0.1.0",
+  "publisher": "deepcore-systems-enterprise",
+  "engines": { "vscode": ">=1.90.0" },
+  "categories": ["Other"],
+  "activationEvents": ["onCommand:deepcore.reviewFile"],
+  "main": "./extension.js",
+  "contributes": {
+    "commands": [
+      {
+        "command": "deepcore.reviewFile",
+        "title": "DeepCore: Review Current File with OpenAI"
+      }
+    ],
+    "menus": {
+      "editor/context": [
+        {
+          "command": "deepcore.reviewFile",
+          "group": "DeepCore@1"
+        }
+      ]
+    }
+  }
+}
