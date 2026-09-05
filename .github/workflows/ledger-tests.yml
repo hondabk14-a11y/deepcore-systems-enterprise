@@ -1,0 +1,31 @@
+name: DeepCore Ledger Tests
+
+on:
+  push:
+    paths:
+      - 'CORE/event-sourced-ledger/**'
+      - '.github/workflows/ledger-tests.yml'
+  pull_request:
+    paths:
+      - 'CORE/event-sourced-ledger/**'
+      - '.github/workflows/ledger-tests.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  ledger-tests:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Run ledger tests
+        working-directory: CORE/event-sourced-ledger
+        run: python -m unittest discover -s . -p 'test_*.py' -v
