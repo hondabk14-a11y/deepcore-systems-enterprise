@@ -1,10 +1,4 @@
-"""Freshness and rollback policy for retained ledger checkpoints.
-
-A valid signature proves authenticity of a checkpoint, but does not prove
-that it is the newest checkpoint. This module makes freshness an explicit
-stateful verification boundary while preserving the current checkpoint
-schema, whose event_count is the monotonic sequence number.
-"""
+"""Freshness and rollback policy for retained ledger checkpoints."""
 from __future__ import annotations
 
 from dataclasses import dataclass
@@ -17,7 +11,7 @@ class CheckpointFreshnessError(ValueError):
 
 
 class CheckpointIdentityError(CheckpointFreshnessError):
-    """Raised when a checkpoint is evaluated under the wrong ledger identity."""
+    """Raised when a freshness policy has no explicit ledger identity."""
 
 
 class CheckpointRollbackError(CheckpointFreshnessError):
@@ -34,20 +28,19 @@ class CheckpointFormatError(CheckpointFreshnessError):
 
 @dataclass
 class CheckpointFreshnessPolicy:
-    """Track the newest accepted checkpoint for one explicitly identified ledger.
+    """Track the newest accepted checkpoint for one explicitly named ledger.
 
-    The current LedgerCheckpoint has no ledger_id or separate sequence field,
-    so event_count is the monotonic sequence for this policy and the ledger
-    identity is bound by the policy instance. An exact repeat is idempotent;
-    older checkpoints and same-sequence conflicts are rejected. Rejected
-    candidates never mutate trusted state.
+    The current checkpoint schema has no ledger identity field, so identity is
+    held by this policy boundary rather than fabricated into the checkpoint.
+    Exact repeats are idempotent; stale and same-sequence conflicting heads
+    are rejected, and rejected candidates never mutate trusted state.
     """
 
     ledger_id: str
     accepted: LedgerCheckpoint | None = None
 
     def __post_init__(self) -> None:
-        if not self.ledger_id:
+        if not isinstance(self.ledger_id, str) or not self.ledger_id:
             raise CheckpointIdentityError("ledger_id is required")
         if self.accepted is not None:
             self._validate(self.accepted)
@@ -57,32 +50,28 @@ class CheckpointFreshnessPolicy:
         if not isinstance(candidate, LedgerCheckpoint):
             raise CheckpointFormatError("candidate must be a LedgerCheckpoint")
         if not isinstance(candidate.event_count, int) or isinstance(candidate.event_count, bool):
-            raise CheckpointFormatError("event_count must be an integer")
+            raise CheckpointFormatError("event_count must be a non-negative integer")
         if candidate.event_count < 0:
-            raise CheckpointFormatError("event_count must be non-negative")
+            raise CheckpointFormatError("event_count must be a non-negative integer")
         if not isinstance(candidate.head_hash, str) or not candidate.head_hash:
             raise CheckpointFormatError("head_hash is required")
 
     def accept(self, candidate: LedgerCheckpoint) -> LedgerCheckpoint:
-        """Accept a fresh checkpoint or idempotently accept the current one."""
+        """Accept a newer checkpoint or idempotently accept the current one."""
         self._validate(candidate)
         current = self.accepted
         if current is None:
             self.accepted = candidate
             return candidate
-
         if candidate.event_count < current.event_count:
             raise CheckpointRollbackError(
-                f"checkpoint sequence rollback: current={current.event_count}, "
-                f"candidate={candidate.event_count}"
+                f"checkpoint sequence rollback: current={current.event_count}, candidate={candidate.event_count}"
             )
-
         if candidate.event_count == current.event_count:
             if candidate == current:
                 return current
             raise CheckpointConflictError(
                 f"conflicting checkpoint at sequence {candidate.event_count}"
             )
-
         self.accepted = candidate
         return candidate
