@@ -135,4 +135,8 @@ def test_transition_is_deterministic():
     m1, _, _, block1, votes1, _ = setup()
     m2, _, _, block2, votes2, _ = setup()
     assert m1.propose("validator_A", block1, 0) == m2.propose("validator_A", block2, 0)
-    assert m1.prepare(block1, 0, votes1).digest == m2.prepare(block2, 0, votes2).digest
+    assert m1.state.phase == m2.state.phase == Phase.PREPARE
+    qc1 = m1.prepare(block1, 0, votes1)
+    qc2 = m2.prepare(block2, 0, votes2)
+    assert qc1.proposal_hash == qc2.proposal_hash
+    assert m1.state.phase == m2.state.phase == Phase.PRE_COMMIT
