@@ -9,7 +9,7 @@ from __future__ import annotations
 import hashlib
 import json
 from pathlib import Path
-from typing import Any
+from typing import Any, Callable, Iterable
 
 GENESIS = "GENESIS"
 
@@ -82,7 +82,11 @@ class EventSourcedLedger:
             previous_hash = stored_hash
         return True
 
-    def replay(self) -> list[dict[str, Any]]:
+    def replay(self, validator: Callable[[Iterable[dict[str, Any]]], None] | None = None) -> list[dict[str, Any]]:
+        """Verify structure, materialize history, then optionally validate domain invariants."""
         if not self.verify():
             raise LedgerIntegrityError("cannot replay an invalid ledger")
-        return [record for _, record in (self._records() or ())]
+        records = [record for _, record in (self._records() or ())]
+        if validator is not None:
+            validator(records)
+        return records
