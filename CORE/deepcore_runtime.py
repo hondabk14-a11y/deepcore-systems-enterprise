@@ -4,11 +4,10 @@
 Reference implementation of the mathematical model in
 ``docs/DEEPCORE-BLOCKCHAIN-MATHEMATICS.md``.
 
-This is executable reference software, not a production cryptographic
-implementation. Transaction authentication uses HMAC-SHA256 only as a
-self-contained development placeholder. Production deployments should use
-proper asymmetric signatures, secure key custody, consensus networking,
-and independently reviewed cryptographic libraries.
+HMAC-SHA256 remains available only as a development compatibility path.
+Ed25519 is the production-oriented asymmetric signature path. Private-key
+custody, rotation, revocation, HSM integration, and consensus networking
+remain separate controls.
 
 Run:
     python CORE/deepcore_runtime.py
@@ -78,6 +77,17 @@ class Transaction:
     def verify_dev(self, secret: bytes) -> bool:
         expected = hmac.new(secret, canonical(self.unsigned()), hashlib.sha256).hexdigest()
         return hmac.compare_digest(self.signature, expected)
+
+    def sign_ed25519(self, identity: Any) -> "Transaction":
+        """Sign canonical transaction bytes with a DeepCore Ed25519 identity."""
+        sig = identity.sign(canonical(self.unsigned()))
+        return Transaction(**self.unsigned(), signature=sig)
+
+    def verify_ed25519(self, public_key: bytes) -> bool:
+        """Verify the transaction against an Ed25519 public key."""
+        from CORE.deepcore_crypto import verify
+
+        return verify(public_key, canonical(self.unsigned()), self.signature)
 
 
 @dataclass(frozen=True)
@@ -303,7 +313,7 @@ def main() -> None:
     print(f"chain_commitment_verified={ledger.verify_block(block, ZERO_HASH)}")
     print("replay_state_verified=True")
     print("runtime_status=REFERENCE_IMPLEMENTATION_VERIFIED")
-    print("crypto_note=HMAC is development-only; production requires reviewed asymmetric cryptography and key custody.")
+    print("crypto_note=Ed25519 is available for asymmetric transaction authentication; HMAC remains development-only.")
 
 
 if __name__ == "__main__":
