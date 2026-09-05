@@ -4,6 +4,7 @@ from pathlib import Path
 
 from checkpoint import CheckpointMismatch, checkpoint, verify_checkpoint
 from ledger import EventSourcedLedger
+from reducer import LedgerState, reduce_ledger_from_anchor
 from trusted_anchor import AnchorNotFound, InMemoryCheckpointAnchor, resolve_checkpoint_anchor
 
 
@@ -54,6 +55,29 @@ class TestTrustedCheckpointAnchor(unittest.TestCase):
             resolved = resolve_checkpoint_anchor(anchor, ledger_id="ledger-A")
             with self.assertRaises(CheckpointMismatch):
                 verify_checkpoint(ledger, resolved)
+        finally:
+            tmp.cleanup()
+
+    def test_reducer_can_resolve_anchor_without_accepting_caller_checkpoint(self):
+        tmp, ledger = self._ledger()
+        try:
+            anchor = InMemoryCheckpointAnchor()
+            anchor.retain("ledger-A", checkpoint(ledger))
+
+            state = reduce_ledger_from_anchor(ledger, anchor, ledger_id="ledger-A")
+            self.assertEqual(state, LedgerState(balance=100, event_count=1))
+        finally:
+            tmp.cleanup()
+
+    def test_anchored_reducer_rejects_missing_anchor(self):
+        tmp, ledger = self._ledger()
+        try:
+            with self.assertRaises(AnchorNotFound):
+                reduce_ledger_from_anchor(
+                    ledger,
+                    InMemoryCheckpointAnchor(),
+                    ledger_id="ledger-A",
+                )
         finally:
             tmp.cleanup()
 
