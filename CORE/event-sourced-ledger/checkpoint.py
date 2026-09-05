@@ -14,18 +14,24 @@ class CheckpointMismatch(ValueError):
 class LedgerCheckpoint:
     """Externally retained commitment to a specific ledger head."""
 
+    ledger_id: str = ""
+    sequence: int = 0
     head_hash: str = GENESIS
     event_count: int = 0
-    anchor_id: str = ""
 
 
-def checkpoint(ledger: EventSourcedLedger, anchor_id: str = "") -> LedgerCheckpoint:
-    """Capture the current persisted head and record count."""
+def checkpoint(
+    ledger: EventSourcedLedger,
+    *,
+    ledger_id: str = "",
+) -> LedgerCheckpoint:
+    """Capture a structural commitment to the current persisted ledger head."""
     records = ledger.replay()
     return LedgerCheckpoint(
+        ledger_id=ledger_id,
+        sequence=len(records),
         head_hash=ledger.last_hash(),
         event_count=len(records),
-        anchor_id=anchor_id,
     )
 
 
@@ -33,9 +39,10 @@ def verify_checkpoint(ledger: EventSourcedLedger, expected: LedgerCheckpoint) ->
     """Reject histories that differ from the externally retained anchor."""
     records = ledger.replay()
     actual = LedgerCheckpoint(
+        ledger_id=expected.ledger_id,
+        sequence=len(records),
         head_hash=ledger.last_hash(),
         event_count=len(records),
-        anchor_id=expected.anchor_id,
     )
     if actual != expected:
         raise CheckpointMismatch(
