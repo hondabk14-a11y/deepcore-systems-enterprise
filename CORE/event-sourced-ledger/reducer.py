@@ -4,6 +4,8 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Any, Iterable
 
+from ledger import EventSourcedLedger
+
 
 class ReducerError(ValueError):
     """Raised when an event cannot produce a valid state transition."""
@@ -33,3 +35,8 @@ def reduce_events(events: Iterable[dict[str, Any]], initial: LedgerState | None 
     for event in events:
         state = apply_event(state, event)
     return state
+
+
+def reduce_ledger(ledger: EventSourcedLedger, initial: LedgerState | None = None) -> LedgerState:
+    """Verify and replay a persisted ledger, then deterministically reduce it."""
+    return reduce_events(ledger.replay(), initial=initial)
