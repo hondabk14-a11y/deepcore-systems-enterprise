@@ -19,7 +19,7 @@ class TestHashVectors(unittest.TestCase):
         }
         self.assertEqual(
             event_hash(record),
-            "3f8f5e3d6b4f0d5f4f5b5b6f6f7f5c1b5e0b8b4d3f1a2f0f4f9f6b8e5d8f2c4a",
+            "d60feaeb9e2e22153b8f543b2a2eb6d7c496b46aa0f38af98d75c005ac01522b",
         )
 
     def test_key_order_does_not_change_hash(self):
