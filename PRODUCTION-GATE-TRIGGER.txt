@@ -1,0 +1,1 @@
+Production gate workflows are triggered automatically by pushes to main and pull requests targeting main. Manual execution is available through GitHub Actions workflow_dispatch.
