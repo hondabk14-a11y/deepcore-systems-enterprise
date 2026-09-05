@@ -1,0 +1,7 @@
+version: 2
+updates:
+  - package-ecosystem: pip
+    directory: "/CORE/event-sourced-ledger"
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 5
