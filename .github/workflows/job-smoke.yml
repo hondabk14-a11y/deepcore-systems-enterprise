@@ -1,0 +1,28 @@
+name: DeepCore Job Smoke
+
+on:
+  push:
+    branches:
+      - archive/deepcore-library-2026-09-v2
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  smoke:
+    name: CI smoke job
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Verify runner
+        run: |
+          set -euo pipefail
+          echo "RUNNER_SMOKE=PASS"
+          test -f README.md
+          echo "REPOSITORY_READ=PASS"
+      - name: Production boundary
+        run: |
+          echo "PRODUCTION_READY=NOT_CLAIMED"
+          echo "Reason: smoke job validates runner and repository access only."
