@@ -9,7 +9,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import Iterable, Mapping
+from typing import Mapping
 
 
 class Decision(str, Enum):
@@ -53,8 +53,37 @@ class SSILDecision:
     reasons: tuple[Reason, ...]
 
 
+_BOOLEAN_FIELDS = (
+    "cryptography_valid",
+    "ledger_integrity_valid",
+    "consensus_valid",
+    "authorization_valid",
+    "security_controls_valid",
+    "recovery_controls_valid",
+    "secret_boundary_valid",
+    "evidence_complete",
+)
+
+
+def _validate_evidence_types(evidence: SSILEvidence) -> None:
+    """Reject type confusion instead of relying on Python truthiness."""
+    for field_name in _BOOLEAN_FIELDS:
+        value = getattr(evidence, field_name)
+        if not isinstance(value, bool):
+            raise TypeError(f"{field_name} must be a boolean")
+
+    signals = evidence.high_risk_signals
+    if not isinstance(signals, (tuple, list)):
+        raise TypeError("high_risk_signals must be a tuple or list of strings")
+    if any(not isinstance(signal, str) for signal in signals):
+        raise TypeError("high_risk_signals entries must be strings")
+
+
 def evaluate(evidence: SSILEvidence) -> SSILDecision:
     """Evaluate evidence deterministically using fail-closed precedence."""
+    if not isinstance(evidence, SSILEvidence):
+        raise TypeError("evidence must be an SSILEvidence instance")
+    _validate_evidence_types(evidence)
 
     reasons: list[Reason] = []
 
@@ -85,7 +114,9 @@ def evaluate(evidence: SSILEvidence) -> SSILDecision:
 
 
 def evaluate_mapping(evidence: Mapping[str, object]) -> SSILDecision:
-    """Evaluate a mapping while rejecting unknown fields for deterministic use."""
+    """Evaluate a mapping while rejecting unknown fields and type confusion."""
+    if not isinstance(evidence, Mapping):
+        raise TypeError("evidence must be a mapping")
 
     allowed = set(SSILEvidence.__dataclass_fields__)
     unknown = set(evidence) - allowed
@@ -93,6 +124,17 @@ def evaluate_mapping(evidence: Mapping[str, object]) -> SSILDecision:
         return SSILDecision(Decision.FAIL_CLOSED, (Reason.SECURITY_CONTROL_FAILURE,))
 
     normalized = dict(evidence)
+    for field_name in _BOOLEAN_FIELDS:
+        if field_name in normalized and not isinstance(normalized[field_name], bool):
+            return SSILDecision(Decision.FAIL_CLOSED, (Reason.SECURITY_CONTROL_FAILURE,))
+
     if "high_risk_signals" in normalized:
-        normalized["high_risk_signals"] = tuple(normalized["high_risk_signals"])
-    return evaluate(SSILEvidence(**normalized))
+        signals = normalized["high_risk_signals"]
+        if not isinstance(signals, (tuple, list)) or any(not isinstance(item, str) for item in signals):
+            return SSILDecision(Decision.FAIL_CLOSED, (Reason.SECURITY_CONTROL_FAILURE,))
+        normalized["high_risk_signals"] = tuple(signals)
+
+    try:
+        return evaluate(SSILEvidence(**normalized))
+    except (TypeError, ValueError):
+        return SSILDecision(Decision.FAIL_CLOSED, (Reason.SECURITY_CONTROL_FAILURE,))
