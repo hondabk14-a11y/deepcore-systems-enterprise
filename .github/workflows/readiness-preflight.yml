@@ -49,6 +49,9 @@ jobs:
       - name: Gate summary
         run: python PRODUCTION-READINESS-GATES/gate-summary.py | tee readiness-gate-summary.txt
 
+      - name: Run SSIL readiness adversarial suite
+        run: python -m unittest discover -s SECURITY/SSIL -p 'test_ssil*.py' -v
+
       - name: Build machine-readable evidence manifest
         env:
           GITHUB_SHA: ${{ github.sha }}
@@ -108,5 +111,6 @@ jobs:
           echo 'Readiness preflight controls executed successfully.'
           echo 'Evidence manifest was structurally verified before artifact upload.'
           echo 'Readiness evidence was bound to an SSIL decision and verified through an event-sourced audit chain.'
+          echo 'SSIL adversarial regression tests executed as part of readiness preflight.'
           echo 'This workflow does not certify production infrastructure, HSM/KMS custody, disaster recovery, rollback, or live observability.'
           echo 'Production certification remains NOT CERTIFIED until environment-specific evidence is independently verified.'
