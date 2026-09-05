@@ -79,15 +79,26 @@ class SSILAdversarialTests(unittest.TestCase):
             validate_decision_event(corrupted)
         self.assertNotEqual(event.event_hash(), corrupted.event_hash())
 
-        corrupted = replace(event, decision="ALLOW")
-        self.assertEqual(corrupted.decision, "ALLOW")
-        self.assertNotEqual(event.event_hash(), corrupted.event_hash())
+        failed = build_decision_event(
+            SSILEvidence(ledger_integrity_valid=False), policy_version="ssil/1", event_sequence=4
+        )
+        corrupted = replace(failed, decision=Decision.ALLOW.value)
+        with self.assertRaises(ValueError):
+            validate_decision_event(corrupted)
+        self.assertNotEqual(failed.event_hash(), corrupted.event_hash())
 
-    def test_reason_code_tampering_changes_event_hash(self) -> None:
+    def test_reason_code_tampering_is_rejected(self) -> None:
         event = build_decision_event(SSILEvidence(), policy_version="ssil/1", event_sequence=1)
-        tampered = replace(event, reason_codes=("LEDGER_INTEGRITY_FAILURE",))
+        tampered = replace(event, reason_codes=(Reason.LEDGER_INTEGRITY_FAILURE.value,))
         self.assertNotEqual(event.event_hash(), tampered.event_hash())
-        validate_decision_event(tampered)
+        with self.assertRaises(ValueError):
+            validate_decision_event(tampered)
+
+    def test_unknown_reason_code_is_rejected(self) -> None:
+        event = build_decision_event(SSILEvidence(), policy_version="ssil/1", event_sequence=5)
+        tampered = replace(event, reason_codes=("MADE_UP_REASON",))
+        with self.assertRaises(ValueError):
+            validate_decision_event(tampered)
 
     def test_frozen_decision_event_cannot_be_mutated(self) -> None:
         event = build_decision_event(SSILEvidence(), policy_version="ssil/1", event_sequence=2)
