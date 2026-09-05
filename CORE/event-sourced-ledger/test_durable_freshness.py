@@ -12,7 +12,7 @@ from durable_freshness import DurableFreshnessError, DurableFreshnessStore
 
 class DurableFreshnessTests(unittest.TestCase):
     def checkpoint(self, sequence: int, head: str) -> LedgerCheckpoint:
-        return LedgerCheckpoint("ledger-a", sequence, head, sequence)
+        return LedgerCheckpoint(head_hash=head, event_count=sequence)
 
     def test_persists_and_reloads_latest_checkpoint(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
@@ -20,7 +20,6 @@ class DurableFreshnessTests(unittest.TestCase):
             store = DurableFreshnessStore(path, ledger_id="ledger-a")
             store.accept(self.checkpoint(1, "h1"))
             store.accept(self.checkpoint(2, "h2"))
-
             restored = DurableFreshnessStore(path, ledger_id="ledger-a")
             self.assertEqual(restored.load(), self.checkpoint(2, "h2"))
 
@@ -55,9 +54,7 @@ class DurableFreshnessTests(unittest.TestCase):
             path = Path(directory) / "freshness.json"
             path.write_text(json.dumps({
                 "ledger_id": "ledger-b",
-                "sequence": 1,
-                "head_hash": "h1",
-                "event_count": 1,
+                "checkpoint": {"head_hash": "h1", "event_count": 1},
             }), encoding="utf-8")
             with self.assertRaises(ValueError):
                 DurableFreshnessStore(path, ledger_id="ledger-a").load()
