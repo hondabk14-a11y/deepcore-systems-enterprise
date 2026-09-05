@@ -96,6 +96,7 @@ class Block:
     state_root: str
     event_root: str
     validator_votes: tuple[str, ...]
+    events: tuple[Event, ...]
     block_hash: str
 
 
@@ -185,6 +186,17 @@ class DeepCoreLedger:
     def state_root(self, state: dict[str, dict[str, int]] | None = None) -> str:
         return sha256_obj(state if state is not None else self.state)
 
+    @staticmethod
+    def _block_body(block: Block) -> dict[str, Any]:
+        """Return the consensus-committed block fields."""
+        return {
+            "height": block.height,
+            "previous_hash": block.previous_hash,
+            "state_root": block.state_root,
+            "event_root": block.event_root,
+            "validator_votes": list(block.validator_votes),
+        }
+
     def commit(self, voters: list[str]) -> Block:
         if not self.events:
             raise ValueError("no pending events")
@@ -196,12 +208,13 @@ class DeepCoreLedger:
         if not self.weighted_quorum_met(voters):
             raise ValueError("weighted quorum not met")
 
+        pending = tuple(self.events)
         candidate = {k: dict(v) for k, v in self.state.items()}
-        for event in self.events:
+        for event in pending:
             self._apply(event, candidate)
 
         previous_hash = self.blocks[-1].block_hash if self.blocks else ZERO_HASH
-        event_root = merkle_root([e.event_id for e in self.events])
+        event_root = merkle_root([e.event_id for e in pending])
         next_root = self.state_root(candidate)
         body = {
             "height": len(self.blocks) + 1,
@@ -217,6 +230,7 @@ class DeepCoreLedger:
             state_root=next_root,
             event_root=event_root,
             validator_votes=tuple(sorted(unique)),
+            events=pending,
             block_hash=block_hash,
         )
         self.state = candidate
@@ -225,22 +239,31 @@ class DeepCoreLedger:
         return block
 
     def replay(self) -> dict[str, dict[str, int]]:
-        """Reconstruct state from the genesis account allocation plus events."""
+        """Reconstruct and verify state exclusively from committed blocks."""
         replayed = {v: {"balance": 1_000_000, "nonce": 0} for v in self.validators}
-        for block in self.blocks:
-            # Events are not retained in Block to keep the committed structure small.
-            # The event archive below is populated separately by the evidence log.
-            pass
+        previous_hash = ZERO_HASH
+
+        for expected_height, block in enumerate(self.blocks, start=1):
+            if block.height != expected_height:
+                raise ValueError("invalid block height during replay")
+            if not self.verify_block(block, previous_hash):
+                raise ValueError(f"invalid block commitment at height {block.height}")
+
+            event_ids = [event.event_id for event in block.events]
+            if merkle_root(event_ids) != block.event_root:
+                raise ValueError(f"event root mismatch at height {block.height}")
+
+            for event in block.events:
+                self._apply(event, replayed)
+
+            if self.state_root(replayed) != block.state_root:
+                raise ValueError(f"state root mismatch at height {block.height}")
+            previous_hash = block.block_hash
+
         return replayed
 
     def verify_block(self, block: Block, previous_hash: str) -> bool:
-        body = {
-            "height": block.height,
-            "previous_hash": block.previous_hash,
-            "state_root": block.state_root,
-            "event_root": block.event_root,
-            "validator_votes": list(block.validator_votes),
-        }
+        body = self._block_body(block)
         return block.previous_hash == previous_hash and sha256_obj(body) == block.block_hash
 
 
@@ -259,6 +282,7 @@ def main() -> None:
     assert ledger.verify_block(block, ZERO_HASH)
     assert block.event_root == merkle_root([event.event_id])
     assert block.state_root == ledger.state_root()
+    assert ledger.replay() == ledger.state
     assert ledger.state["validator_A"] == {"balance": 899_000, "nonce": 1}
     assert ledger.state["validator_B"] == {"balance": 1_100_000, "nonce": 0}
 
@@ -277,6 +301,7 @@ def main() -> None:
     print(f"ssil_score={score} category={category}")
     print(f"invalid_nonce_rejected={not ok}")
     print(f"chain_commitment_verified={ledger.verify_block(block, ZERO_HASH)}")
+    print("replay_state_verified=True")
     print("runtime_status=REFERENCE_IMPLEMENTATION_VERIFIED")
     print("crypto_note=HMAC is development-only; production requires reviewed asymmetric cryptography and key custody.")
 
