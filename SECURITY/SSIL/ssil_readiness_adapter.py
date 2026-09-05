@@ -1,4 +1,4 @@
-"""Map readiness evidence into an SSIL decision without granting authority."""
+"""Map readiness evidence into SSIL evidence without granting authority."""
 
 from __future__ import annotations
 
@@ -20,18 +20,14 @@ REQUIRED_CONTROL_KEYS = (
 )
 
 
-def evaluate_readiness_manifest(manifest: dict) -> SSILDecision:
-    """Evaluate readiness evidence as SSIL evidence.
-
-    This adapter is advisory: it produces a decision only and never authorizes
-    deployment, key use, ledger mutation, or production certification.
-    """
+def readiness_to_ssil_evidence(manifest: dict) -> SSILEvidence:
+    """Map readiness evidence to the exact immutable SSIL evidence object."""
     if not isinstance(manifest, dict):
         raise TypeError("manifest must be a mapping")
 
     controls = manifest.get("controls")
     if not isinstance(controls, dict):
-        return evaluate(SSILEvidence(security_controls_valid=False))
+        return SSILEvidence(security_controls_valid=False)
 
     complete = all(
         isinstance(controls.get(key), str) and bool(controls.get(key).strip())
@@ -43,9 +39,16 @@ def evaluate_readiness_manifest(manifest: dict) -> SSILDecision:
         and manifest.get("external_evidence_required") is True
     )
 
-    return evaluate(
-        SSILEvidence(
-            security_controls_valid=certification_boundary_valid,
-            evidence_complete=complete,
-        )
+    return SSILEvidence(
+        security_controls_valid=certification_boundary_valid,
+        evidence_complete=complete,
     )
+
+
+def evaluate_readiness_manifest(manifest: dict) -> SSILDecision:
+    """Evaluate readiness evidence as SSIL evidence.
+
+    This adapter is advisory: it produces a decision only and never authorizes
+    deployment, key use, ledger mutation, or production certification.
+    """
+    return evaluate(readiness_to_ssil_evidence(manifest))
