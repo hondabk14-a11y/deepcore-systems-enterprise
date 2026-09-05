@@ -99,6 +99,7 @@ def test_block_tampering_detected(ledger_and_secrets):
         state_root=ZERO_HASH,
         event_root=block.event_root,
         validator_votes=block.validator_votes,
+        events=block.events,
         block_hash=block.block_hash,
     )
     assert not ledger.verify_block(tampered, ZERO_HASH)
