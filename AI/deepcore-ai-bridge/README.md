@@ -10,47 +10,54 @@ npm install
 cp .env.example .env
 ```
 
-For OpenAI review, set `OPENAI_API_KEY` in the local `.env` file. Never commit `.env` or API keys.
+Never commit `.env` or API keys.
 
 ## OpenAI review
+
+Set `OPENAI_API_KEY` in the local `.env`, then:
 
 ```bash
 npm run review -- ../../CORE/event-sourced-ledger/ledger.py
 ```
 
-The bridge reads the file and asks the model for security, correctness, determinism, failure-handling, and test-review findings. It does not modify repository files.
+## OpenRouter review
 
-## Local vLLM preflight
+Set the credential only in the local environment:
 
-The bridge can also target an OpenAI-compatible local vLLM server. Configure `.env` like this:
+```dotenv
+OPENROUTER_API_KEY=
+DEEPCORE_AI_BASE_URL=https://openrouter.ai/api/v1
+DEEPCORE_AI_MODEL=openai/gpt-4o
+```
+
+Optional attribution headers can be configured with `OPENROUTER_HTTP_REFERER` and `OPENROUTER_X_TITLE`. The bridge selects `OPENROUTER_API_KEY` only when the configured endpoint is OpenRouter. It never prints or persists the credential.
+
+```bash
+npm run review -- ../../CORE/event-sourced-ledger/ledger.py
+```
+
+## Local vLLM or SGLang preflight
+
+The bridge can target an OpenAI-compatible local inference server:
 
 ```dotenv
 DEEPCORE_AI_BASE_URL=http://127.0.0.1:8000/v1
 DEEPCORE_AI_MODEL=deepseek-ai/DeepSeek-V4-Flash
 ```
 
-Start the local server separately, then run:
+For SGLang, use `http://127.0.0.1:30000/v1` instead. Start the local server separately, then run:
 
 ```bash
 npm run local:health
+npm run local:test
 ```
 
 The preflight checks the `/v1/models` contract, verifies the expected model is advertised, sends a minimal deterministic chat-completion probe, and validates the response shape. It prints only pass/fail metadata and never dumps the model response or credentials.
 
-The corresponding offline contract tests are:
-
-```bash
-npm run local:test
-```
-
-These tests use Node's built-in test runner and do not require a running model server.
-
-## VS Code
-
-Use GitHub Copilot for interactive editor assistance. Use this bridge when an independent, read-only AI review is useful before committing or opening a pull request.
+The offline contract tests do not require a running model server.
 
 ## Security boundary
 
-The bridge and local inference backend must remain advisory. They must not bypass repository controls, alter ledger authority, handle private keys, or weaken authentication, authorization, signature verification, replay protection, consensus safety, or invariants.
+The bridge and all AI backends remain advisory. They must not bypass repository controls, alter ledger authority, handle private keys, or weaken authentication, authorization, signature verification, replay protection, consensus safety, or invariants.
 
-Local inference readiness is an engineering preflight, not production certification. A passing local check does not establish production availability, security, key custody, backup/restore, rollback, observability, or independent review.
+Local and external AI readiness checks are engineering preflights, not production certification. A passing AI check does not establish production availability, security, key custody, backup/restore, rollback, observability, or independent review.
