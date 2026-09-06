@@ -1,65 +1,76 @@
 # DeepCore Systems Enterprise Production Gap Register
 
-**Execution phase:** Phase 0 — Repository and Architecture Discovery
-**Branch:** `production-readiness-execution`
-**Status:** NOT_READY
+**Execution phase:** P0.1 — Implementation inventory and code-to-spec traceability  
+**Branch:** `production-readiness-execution`  
+**Status:** NOT_READY  
 **Evidence standard:** Documentation alone does not establish implementation, verification, deployment, or production readiness.
 
-## Initial evidence boundary
+## P0.1 evidence boundary
 
-This register is based on the repository-level architecture and operating contract currently visible during Phase 0. The repository README explicitly describes the repository as a structured architectural baseline with some executable artifacts and other specifications awaiting verified implementation. Therefore, capabilities described architecturally but not backed by executable evidence are marked `UNVERIFIED` rather than complete.
+The repository inspection now maps major architecture claims to concrete source/documentation paths. The inventory is recorded in `DEEPCORE-IMPLEMENTATION-INVENTORY.md`. A capability is not promoted to production status merely because a design document exists or a test file exists. Execution, security, recovery, and approval evidence remain separate gates.
 
 ## Current gaps
 
-| Area | Status | Initial finding | Required evidence / next action |
+| Area | Status | P0.1 finding | Required next action |
 |---|---|---|---|
-| Architecture baseline | IMPLEMENTED | Repository has structured architecture areas and explicit production principles. | Maintain architecture-to-code traceability. |
-| Event-sourced deterministic core | PARTIAL | Architecture identifies event history, deterministic replay, reducers, and invariants, but repository status says not all components are verified implementations. | Inventory executable core, tests, replay proofs, and recovery tests. |
-| BFT consensus | UNVERIFIED | HotStuff-style BFT, QC, BLS, and adversarial testing are specified. | Prove executable implementation, quorum tests, Byzantine tests, and benchmark evidence. |
-| Cryptographic identity | PARTIAL | Ed25519/ECDSA/private PKI and hardware-bound identity are described. | Establish implementation inventory, key lifecycle, rotation, revocation, and test evidence. |
-| Key management | MISSING | Full enterprise key lifecycle is not established by the visible repository baseline. | Implement GENERATE/REGISTER/ACTIVATE/ROTATE/SUSPEND/REVOKE/DESTROY/AUDIT with custody boundaries. |
-| PQC crypto agility | PARTIAL | PQC migration readiness is described, but complete algorithm abstraction and migration evidence are not established. | Implement versioned crypto abstraction and approved hybrid/PQC profiles where required. |
-| Private PKI | PARTIAL | PKI is part of the architecture. | Verify CA hierarchy, issuance, rotation, revocation, trust anchors, compromise isolation, and tests. |
-| IAM/AuthZ | MISSING | Explicit authorization is a design principle, but a complete enterprise IAM capability is not established. | Implement identity, workload identity, RBAC/ABAC, delegation, privileged access, break-glass, SoD, and audit. |
-| Policy engine | PARTIAL | Policy/authorization is architecturally defined. | Verify signed decisions, policy version/hash, constraints, expiry, fail-closed behavior, and tests. |
-| Audit/evidence | PARTIAL | Auditability and Bitcoin/Merkle evidence are architectural goals. | Build request→auth→action→event→state→Merkle→anchor traceability and verification tooling. |
-| Bitcoin/DC02 anchoring | PARTIAL | Bitcoin Core, NBL/DC02 and anchoring are specified. | Verify executable anchoring, confirmation policy, reorg handling, RPC failure handling, replay protection, recovery. |
-| Treasury controls | UNVERIFIED | Treasury reconciliation and accelerator controls are specified. | Verify authoritative accounting, reconciliation, authorization, double-spend controls, and failure handling. |
-| DeepCore Pay | UNVERIFIED | NFC/L3 invoice/DC02 proof architecture is documented. | Verify executable implementation, secure key custody, replay protection, payment-state invariants, and tests. |
-| Observability | PARTIAL | Infrastructure architecture includes monitoring/observability. | Establish SLI/SLO, structured telemetry, correlation IDs, alerting, security events, and evidence. |
-| Security operations | MISSING | SIEM/SOAR-compatible security-event pipeline is not established by current visible baseline. | Implement security event taxonomy, detection rules, escalation, and integration contracts. |
-| Incident response | MISSING | Runbook framework is required but not evidenced as complete. | Create executable incident runbooks and auditable incident lifecycle. |
-| Disaster recovery | UNVERIFIED | Recovery is a stated production requirement, but successful restore evidence is not established. | Define RPO/RTO, immutable backups, restoration, key/PKI/ledger recovery, and execute drills. |
-| Multi-region resilience | UNVERIFIED | Multi-region architecture has been discussed, but production evidence is not established. | Validate partition, region loss, reconciliation, quorum behavior, and recovery. |
-| Chaos engineering | UNVERIFIED | Adversarial/chaos testing is a roadmap requirement. | Build repeatable fault injection and invariant assertions. |
-| Supply-chain security | MISSING | Current baseline does not establish complete SBOM/provenance/signing/admission enforcement. | Implement dependency controls, SBOM, provenance, artifact/image signing and verification. |
-| Secure CI/CD | PARTIAL | CI/CD is part of the architecture/roadmap. | Verify security gates, signed artifacts, provenance, deployment controls, and rollback. |
-| Runtime security | UNVERIFIED | Kubernetes/Istio/SPIFFE are architectural components. | Verify admission, workload identity, network policy, secret isolation, least privilege, runtime integrity. |
-| Performance/capacity | UNVERIFIED | No production benchmark evidence established in Phase 0. | Build reproducible normal/adversarial load tests and capacity model. |
-| Data governance | MISSING | Enterprise retention/classification/lifecycle controls are not established by visible baseline. | Define applicable data classification, retention, archival, deletion, residency, isolation. |
-| API governance | UNVERIFIED | APIs exist conceptually, but enterprise lifecycle controls are not established. | Verify versioning, schema, auth, rate limits, idempotency, replay protection, compatibility. |
-| Configuration management | MISSING | No complete signed/versioned production configuration control is evidenced. | Implement environment separation, validation, access control, audit, and safe promotion. |
-| Formal verification | PARTIAL | TLA+/Lean/runtime invariants are explicitly planned. | Connect specifications to implementation and CI; publish machine-verifiable evidence. |
-| Testing system | PARTIAL | Testing is a stated discipline, but complete unit/integration/system/fuzz/chaos/recovery coverage is not evidenced. | Establish test matrix and CI execution evidence. |
-| Threat model | MISSING | Threat-model requirement exists but a current completed model is not established. | Create and maintain `DEEPCORE-THREAT-MODEL.md`. |
-| AI security | PARTIAL | AI is explicitly bounded as advisory/orchestration. | Verify tool authorization, sandboxing, output validation, model provenance, and deterministic action gates. |
-| Governance/compliance | UNVERIFIED | Applicable controls are identified conceptually; certification/compliance evidence is not established. | Build control/evidence matrix without making unsupported compliance claims. |
-| External security assessment | MISSING | No independent assessment evidence established. | Prepare audit scope and remediate findings before any production claim. |
-| Operational runbooks | MISSING | Repository requires runbooks but completeness is not established. | Create production, incident, deployment, rollback, recovery, and key-management runbooks. |
+| Architecture baseline | IMPLEMENTED | Structured architecture and operating principles are present. | Maintain code-to-spec traceability. |
+| Event-sourced deterministic core | IMPLEMENTED_REFERENCE | Executable reducer and ledger components are present. | Add full integration, adversarial, recovery, and production-like execution evidence. |
+| BFT consensus | UNVERIFIED | Consensus README describes a planned Rust/QC implementation, but no executable consensus engine was established in P0.1 search. | Implement/locate executable engine and prove quorum safety/liveness. |
+| Cryptographic identity | PARTIAL | Ed25519 signing/verification and checkpoint verification exist. | Complete identity lifecycle, trust roots, rotation, revocation, and custody evidence. |
+| Key management | MISSING | No authoritative enterprise key lifecycle/custody implementation established. | Implement GENERATE/REGISTER/ACTIVATE/ROTATE/SUSPEND/REVOKE/DESTROY/AUDIT with protected custody. |
+| PQC crypto agility | PARTIAL | PQC readiness and crypto-agility requirements are documented; production PQC implementation not established. | Implement approved versioned/hybrid PQC profiles and tests. |
+| Private PKI | PARTIAL | ECDSA/private-CA intent exists; complete CA lifecycle not established. | Implement and test issuance, rotation, revocation, trust anchors, and compromise isolation. |
+| IAM/AuthZ | MISSING | No complete executable IAM/RBAC/ABAC/delegation boundary established. | Implement deterministic authorization service and fail-closed execution gate. |
+| Policy engine | PARTIAL | Policy/authorization is a design requirement, but executable signed decision service is not established. | Implement signed decisions containing policy ID/version/hash, constraints, expiry, and decision hash. |
+| Audit/evidence | PARTIAL | Ledger/checkpoint evidence exists; complete request→auth→action→event→state→Merkle→anchor chain is not established. | Build end-to-end auditable evidence chain and verifier. |
+| Bitcoin/DC02 anchoring | PARTIAL | DC02/NBL anchoring architecture is documented; end-to-end executable evidence is not established. | Implement/verify anchoring, confirmation/reorg policy, failure handling, replay protection, and recovery. |
+| Treasury controls | UNVERIFIED | Treasury architecture is present, but authoritative accounting implementation/evidence is not established. | Implement and test reconciliation, authorization, double-spend, and recovery controls. |
+| DeepCore Pay | UNVERIFIED | Payment architecture is documented without verified executable settlement implementation. | Implement and test payment-state invariants and secure key boundaries. |
+| Observability | PARTIAL | CI/runtime/monitoring artifacts exist; production SLI/SLO and security telemetry evidence is incomplete. | Establish telemetry contracts, alerts, correlation, and executed evidence. |
+| Security operations | MISSING | No complete security-event detection/escalation pipeline established. | Implement event taxonomy, detections, escalation, and integration contracts. |
+| Incident response | MISSING | Security policy describes response principles, not a complete executable runbook set. | Create auditable incident lifecycle and runbooks. |
+| Disaster recovery | UNVERIFIED | Recovery requirements exist, but successful restore evidence is absent. | Define RPO/RTO, immutable backups, restore procedures, and execute drills. |
+| Multi-region resilience | UNVERIFIED | Architecture/roadmap intent exists without executable production evidence. | Validate partition, region loss, quorum, reconciliation, and recovery. |
+| Chaos engineering | UNVERIFIED | Adversarial testing is planned but no verified repeatable chaos harness is established. | Build fault injection with invariant assertions and evidence capture. |
+| Supply-chain security | MISSING | Repository security policy exists; complete SBOM/provenance/signing/admission enforcement is not established. | Implement dependency, SBOM, provenance, signing, and verification controls. |
+| Secure CI/CD | PARTIAL | Multiple workflows exist, but execution and artifact-security evidence is not established by P0.1. | Execute and review gates; enforce provenance/signing/rollback. |
+| Runtime security | UNVERIFIED | Kubernetes/Istio/SPIFFE are architectural targets; runtime enforcement evidence is absent. | Prove admission, identity, network policy, secret isolation, least privilege. |
+| Performance/capacity | UNVERIFIED | No reproducible production benchmark evidence established. | Build normal/adversarial load tests and capacity model. |
+| Data governance | MISSING | Classification/retention/lifecycle controls are not established. | Define and implement applicable data governance controls. |
+| API governance | UNVERIFIED | APIs exist conceptually, but complete versioning/auth/rate-limit/idempotency/replay controls are not evidenced. | Establish API contract and executable conformance tests. |
+| Configuration management | MISSING | Complete signed/versioned production configuration control is not evidenced. | Implement validation, access control, promotion, and audit. |
+| Formal verification | PARTIAL | TLA+/Lean intent is documented; implementation-to-proof linkage is not established. | Connect specifications to executable invariants and CI evidence. |
+| Testing system | PARTIAL | Ledger/checkpoint tests exist; complete system/security/adversarial/chaos/recovery coverage is not evidenced. | Build and execute the full test matrix. |
+| Threat model | MISSING | No current completed threat-model artifact established. | Create `DEEPCORE-THREAT-MODEL.md` and map threats to controls/tests. |
+| AI security | PARTIAL | AI bridge exists and the authority boundary is documented; end-to-end unauthorized-action prevention evidence is incomplete. | Test tool authorization, sandboxing, output validation, provenance, and deterministic action gates. |
+| Governance/compliance | UNVERIFIED | Control concepts exist without evidence for applicable external compliance claims. | Build evidence matrix without unsupported certification claims. |
+| External security assessment | MISSING | No independent assessment evidence established. | Prepare scope and remediate findings before production approval. |
+| Operational runbooks | MISSING | Production/incident/deployment/rollback/recovery runbook completeness is not established. | Create and execute operational runbooks. |
 
-## Blocking P0 gaps
+## P0 blockers after P0.1
 
-1. Complete implementation inventory and code-to-spec traceability.
-2. Enterprise IAM/AuthZ.
-3. Cryptographic key lifecycle and custody controls.
-4. Ledger integrity/replay verification evidence.
-5. BFT consensus executable/adversarial verification evidence.
-6. PKI lifecycle verification.
-7. Audit/evidence chain.
-8. Secrets and software supply-chain controls.
-9. Backup and disaster-recovery verification.
-10. Threat model and security-control evidence.
+1. Enterprise IAM/AuthZ and deterministic execution gate.
+2. Cryptographic key lifecycle and custody controls.
+3. Executable BFT consensus/QC/BLS implementation and adversarial evidence.
+4. Complete PKI lifecycle.
+5. End-to-end audit/evidence chain.
+6. Bitcoin/DC02 executable anchoring and recovery evidence.
+7. Secrets and software supply-chain controls.
+8. Backup and disaster-recovery execution evidence.
+9. Threat model and mapped security-control evidence.
+10. External security assessment.
+
+## P0.1 result
+
+**Discovery completion:** COMPLETE.  
+**Production readiness:** NOT_READY.
+
+The inventory now distinguishes executable reference components from architecture/planning claims. In particular, the event ledger/reducer/checkpoint surface and Ed25519 verification have concrete source evidence, while the consensus README still describes Rust/QC/BLS as a planned implementation baseline. This prevents documentation from being mistaken for implementation.
 
 ## Production rule
 
 No item may move to `COMPLETE` or `PRODUCTION_READY` without executable evidence. Any untested architectural statement remains `UNVERIFIED`.
+
+## Next execution target
+
+**P0.2 — Implement and verify the authoritative authorization boundary: IAM/AuthZ + signed policy decisions + fail-closed execution gate.**
