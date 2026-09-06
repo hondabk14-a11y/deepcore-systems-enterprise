@@ -4,7 +4,9 @@
   "version": "0.1.0",
   "type": "module",
   "scripts": {
-    "review": "node src/deepcore-ai-bridge.mjs"
+    "review": "node src/deepcore-ai-bridge.mjs",
+    "local:health": "node local-inference-health-check.mjs",
+    "local:test": "node --test test-local-inference-health-check.mjs"
   },
   "dependencies": {
     "dotenv": "^16.4.7",
