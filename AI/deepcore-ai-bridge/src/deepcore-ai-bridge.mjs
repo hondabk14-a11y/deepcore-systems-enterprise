@@ -14,7 +14,9 @@ if (!target) {
   process.exit(2);
 }
 
-const apiKey = process.env.OPENAI_API_KEY;
+const baseURL = process.env.DEEPCORE_AI_BASE_URL || "https://api.openai.com/v1";
+const isLocal = /^(https?:\/\/)?(localhost|127\.0\.0\.1)(:\d+)?\/?$/i.test(baseURL);
+const apiKey = process.env.OPENAI_API_KEY || (isLocal ? "deepcore-local" : "");
 if (!apiKey) {
   console.error("OPENAI_API_KEY is not set. Create a local .env from .env.example.");
   process.exit(2);
@@ -24,7 +26,7 @@ const model = process.env.DEEPCORE_AI_MODEL || "gpt-5.6-mini";
 const absoluteTarget = path.resolve(process.cwd(), target);
 const source = await fs.readFile(absoluteTarget, "utf8");
 
-const client = new OpenAI({ apiKey });
+const client = new OpenAI({ apiKey, baseURL });
 
 const instructions = `You are the DeepCore Systems Enterprise engineering reviewer.
 
