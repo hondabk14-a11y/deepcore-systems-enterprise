@@ -61,6 +61,65 @@ jobs:
           test -f CORE/event-sourced-ledger/ledger.py
           test -f CORE/event-sourced-ledger/test_ledger.py
 
+      - name: Build machine-readable gate evidence
+        env:
+          GITHUB_SHA: ${{ github.sha }}
+          GITHUB_RUN_ID: ${{ github.run_id }}
+          GITHUB_RUN_ATTEMPT: ${{ github.run_attempt }}
+          GITHUB_REF_NAME: ${{ github.ref_name }}
+          GITHUB_EVENT_NAME: ${{ github.event_name }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+        run: |
+          python - <<'PY'
+          import json
+          import os
+          from pathlib import Path
+
+          evidence = {
+              "schema_version": "1.0",
+              "evidence_type": "repository-production-gate",
+              "repository": os.environ["GITHUB_REPOSITORY"],
+              "commit_sha": os.environ["GITHUB_SHA"],
+              "ref": os.environ["GITHUB_REF_NAME"],
+              "event": os.environ["GITHUB_EVENT_NAME"],
+              "workflow_run_id": int(os.environ["GITHUB_RUN_ID"]),
+              "workflow_run_attempt": int(os.environ["GITHUB_RUN_ATTEMPT"]),
+              "repository_gate": "PASS",
+              "controls": {
+                  "ledger_tests": "PASS",
+                  "ledger_compile": "PASS",
+                  "tracked_secret_paths": "PASS",
+                  "repository_hygiene": "PASS",
+              },
+              "production_certified": False,
+              "certification_state": "NOT_CERTIFIED",
+              "external_evidence_required": [
+                  "production_infrastructure",
+                  "cryptographic_key_custody",
+                  "backup_restore_drill",
+                  "rollback_drill",
+                  "production_observability",
+                  "independent_review",
+              ],
+          }
+          Path("production-gate-evidence.json").write_text(
+              json.dumps(evidence, indent=2, sort_keys=True) + "\n",
+              encoding="utf-8",
+          )
+          PY
+
+      - name: Validate gate evidence
+        run: python -m json.tool production-gate-evidence.json >/dev/null
+
+      - name: Upload gate evidence artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: deepcore-production-gate-evidence-${{ github.run_id }}-${{ github.run_attempt }}
+          path: production-gate-evidence.json
+          if-no-files-found: error
+          retention-days: 30
+
       - name: Production gate decision
         run: |
-          echo 'DeepCore production gate PASSED: required repository, compilation, ledger tests, and secret-file checks completed successfully.'
+          echo 'DeepCore repository production gate PASSED: required repository, compilation, ledger tests, and secret-file checks completed successfully.'
+          echo 'This is repository gate evidence only. Production certification remains NOT CERTIFIED until environment-specific and independent evidence is verified.'
