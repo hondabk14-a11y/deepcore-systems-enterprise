@@ -92,3 +92,4 @@ Production readiness requires evidence, not architecture diagrams alone. Humanit
 - **Production-ready:** implementation, security review, operational controls, recovery, and rollback evidence are complete.
 
 These labels must not be conflated.
+
