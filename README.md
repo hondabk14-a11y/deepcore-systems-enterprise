@@ -4,7 +4,7 @@ Private architecture and engineering repository for the DeepCore Systems Enterpr
 
 ## Mission
 
-DeepCore is a private, event-sourced distributed systems platform designed around deterministic state, cryptographic trust, verifiable execution, and controlled integration with financial and AI infrastructure.
+DeepCore is a public, event-sourced distributed systems platform designed around deterministic state, cryptographic trust, verifiable execution, and controlled integration with financial and AI infrastructure.
 
 ## Architecture map
 
