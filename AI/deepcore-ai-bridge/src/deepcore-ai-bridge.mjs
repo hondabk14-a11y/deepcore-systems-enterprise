@@ -27,7 +27,7 @@ if (!apiKey) {
   process.exit(2);
 }
 
-const model = process.env.DEEPCORE_AI_MODEL || "gpt-5.6-mini";
+const model = process.env.DEEPCORE_AI_MODEL || "gpt-6-astra";
 const absoluteTarget = path.resolve(process.cwd(), target);
 const source = await fs.readFile(absoluteTarget, "utf8");
 
@@ -40,7 +40,7 @@ const defaultHeaders = isOpenRouter
 
 const client = new OpenAI({
   apiKey,
-  baseURL,
+  baseURL: normalizedBaseURL,
   defaultHeaders,
 });
 
