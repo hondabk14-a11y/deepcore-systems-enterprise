@@ -81,19 +81,26 @@ def verify_market_prices(
         relative_difference = abs(first_price - second_price) / max(first_price, second_price)
 
     status = "VERIFIED" if relative_difference <= threshold else "DISCREPANCY"
+    providers = (first.provider, second.provider)
+    source_event_hashes = (first.event_hash, second.event_hash)
     payload = {
         "asset_id": first.asset_id,
         "currency": first.currency,
-        "providers": [first.provider, second.provider],
+        "providers": list(providers),
         "relative_difference": format(relative_difference, "f"),
         "result_type": "verification.result",
-        "source_event_hashes": [first.event_hash, second.event_hash],
+        "source_event_hashes": list(source_event_hashes),
         "status": status,
         "tolerance": format(threshold, "f"),
     }
     return MarketVerificationResult(
-        **payload,
-        providers=(first.provider, second.provider),
-        source_event_hashes=(first.event_hash, second.event_hash),
+        result_type=payload["result_type"],
+        status=payload["status"],
+        asset_id=payload["asset_id"],
+        currency=payload["currency"],
+        providers=providers,
+        relative_difference=payload["relative_difference"],
+        tolerance=payload["tolerance"],
+        source_event_hashes=source_event_hashes,
         result_hash=canonical_hash(payload),
     )
