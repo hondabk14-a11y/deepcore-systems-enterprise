@@ -13,7 +13,7 @@ permissions:
 
 jobs:
   verify:
-    name: Runtime, cryptography, consensus, transport, persistence, fault recovery, SSIL, and UST verification
+    name: Runtime, cryptography, consensus, transport, persistence, fault recovery, SSIL, UST, and market-data verification
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
@@ -46,3 +46,9 @@ jobs:
           tests/test_ust_settlement.py
           tests/test_ust_ssil_gate.py
           tests/test_ust_controller.py
+
+      - name: Run CoinGecko observation and SDK adapter verification
+        run: >-
+          python -m pytest -q
+          MARKET-DATA/test_coingecko_observation.py
+          MARKET-DATA/test_coingecko_sdk_adapter.py
