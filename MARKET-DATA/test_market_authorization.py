@@ -5,6 +5,7 @@ from __future__ import annotations
 import importlib.util
 from pathlib import Path
 
+import pytest
 
 ROOT = Path(__file__).resolve().parent
 
@@ -52,20 +53,17 @@ def test_policy_evidence_is_bound_to_authorization_request() -> None:
     assert request.request_hash
 
 
-def test_blocked_policy_cannot_become_authorization_request() -> None:
-    try:
-        authorization.build_authorization_request(
-            _decision("BLOCK"),
-            request_id="req-002",
-            principal="risk-service",
-            action="market.observe",
-            nonce="nonce-002",
-            expires_at="2026-09-14T01:00:00+00:00",
-        )
-    except ValueError as exc:
-        assert "blocked policy decision" in str(exc)
-    else:
-        raise AssertionError("BLOCK must not produce an authorization request")
+def test_non_allow_policy_cannot_become_authorization_request() -> None:
+    for decision in ("REVIEW", "ESCALATE", "BLOCK"):
+        with pytest.raises(ValueError, match="only ALLOW"):
+            authorization.build_authorization_request(
+                _decision(decision),
+                request_id="req-002",
+                principal="risk-service",
+                action="market.observe",
+                nonce="nonce-002",
+                expires_at="2026-09-14T01:00:00+00:00",
+            )
 
 
 def test_required_request_fields_fail_closed() -> None:
@@ -84,12 +82,8 @@ def test_required_request_fields_fail_closed() -> None:
             "expires_at": "2026-09-14T01:00:00+00:00",
         }
         kwargs[field] = value
-        try:
+        with pytest.raises(ValueError, match=field):
             authorization.build_authorization_request(_decision(), **kwargs)
-        except ValueError as exc:
-            assert field in str(exc)
-        else:
-            raise AssertionError(f"missing {field} must fail closed")
 
 
 def test_request_hash_is_deterministic() -> None:
