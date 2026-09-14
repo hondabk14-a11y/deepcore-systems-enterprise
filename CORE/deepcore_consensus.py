@@ -1,9 +1,10 @@
 #!/usr/bin/env python3
 """Signed quorum certificates for the DeepCore consensus layer.
 
-The certificate signs a proposal digest derived from the block body without the
-certificate itself. The final committed block then commits the certificate
-digest, avoiding circular hashing while preserving deterministic evidence.
+The certificate signs a proposal digest derived from the complete block
+proposal commitment, including authorization/evidence binding. The final
+committed block then commits the certificate digest, avoiding circular hashing
+while preserving deterministic evidence.
 """
 
 from __future__ import annotations
@@ -71,13 +72,14 @@ class SignedQuorumCertificate:
 
     @staticmethod
     def proposal_hash(block: Block) -> str:
-        """Hash exactly the pre-certificate block commitment fields."""
+        """Hash every pre-certificate proposal commitment, including authorization evidence."""
         return sha256_bytes(canonical({
             "height": block.height,
             "previous_hash": block.previous_hash,
             "state_root": block.state_root,
             "event_root": block.event_root,
             "validator_votes": list(block.validator_votes),
+            "authorization_commitment": block.authorization_commitment,
         }))
 
     def vote_payload(self, height: int, round: int, proposal_hash: str) -> bytes:
