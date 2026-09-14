@@ -52,7 +52,7 @@ def build_authorization_request(
     nonce: str,
     expires_at: str,
 ) -> MarketAuthorizationRequest:
-    """Bind policy evidence to an authorization request without signing it."""
+    """Bind an ALLOW policy decision to an unsigned authorization request."""
     for value, field in (
         (request_id, "request_id"),
         (principal, "principal"),
@@ -64,8 +64,8 @@ def build_authorization_request(
             raise ValueError(f"{field} is required")
     if not decision.decision_hash:
         raise ValueError("policy decision hash is required")
-    if decision.decision == "BLOCK":
-        raise ValueError("blocked policy decision cannot become an authorization request")
+    if decision.decision != "ALLOW":
+        raise ValueError("only ALLOW policy decisions can become authorization requests")
 
     payload = {
         "action": action,
