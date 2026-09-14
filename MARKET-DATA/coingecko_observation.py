@@ -9,6 +9,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from datetime import datetime, timezone
+from decimal import Decimal, InvalidOperation
 import hashlib
 import json
 import os
@@ -21,7 +22,7 @@ class CoinGeckoObservation:
     coingecko_id: str
     symbol: str
     name: str
-    price: int
+    price: str
     currency: str
     retrieved_at: str
     provenance_hash: str
@@ -49,32 +50,42 @@ def canonical_hash(payload: dict[str, Any]) -> str:
     return hashlib.sha256(encoded).hexdigest()
 
 
+def _canonical_price(price: Decimal | int | str | float) -> str:
+    """Normalize a numeric price without binary float serialization."""
+    if isinstance(price, bool):
+        raise ValueError("price must be a non-negative decimal")
+    try:
+        value = Decimal(str(price))
+    except (InvalidOperation, ValueError):
+        raise ValueError("price must be a non-negative decimal") from None
+    if not value.is_finite() or value < 0:
+        raise ValueError("price must be a non-negative decimal")
+    return format(value, "f")
+
+
 def build_observation(
     *,
     coingecko_id: str,
     symbol: str,
     name: str,
-    price: int,
+    price: Decimal | int | str | float,
     currency: str,
     retrieved_at: str | None = None,
 ) -> CoinGeckoObservation:
     """Build a validated observation from an already retrieved SDK result.
 
-    Prices are represented as integer minor units by the caller so the
-    canonical event is deterministic and does not depend on floating-point
-    serialization.
+    Prices are canonical decimal strings so cryptocurrency precision is
+    preserved without depending on binary floating-point serialization.
     """
     if not coingecko_id or not symbol or not name or not currency:
         raise ValueError("asset identity fields must be non-empty")
-    if isinstance(price, bool) or not isinstance(price, int) or price < 0:
-        raise ValueError("price must be a non-negative integer")
 
     timestamp = retrieved_at or datetime.now(timezone.utc).isoformat()
     payload = {
         "coingecko_id": coingecko_id,
         "currency": currency,
         "name": name,
-        "price": price,
+        "price": _canonical_price(price),
         "provider": "coingecko",
         "retrieved_at": timestamp,
         "symbol": symbol,
