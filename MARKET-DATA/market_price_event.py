@@ -1,7 +1,8 @@
-"""Canonical market.price event contract for verified external observations.
+"""Canonical market.price event contract for external observations.
 
-This module converts a validated CoinGecko observation into a deterministic
-DeepCore event payload. It does not authorize commands, sign transactions,
+This module converts a validated external observation into a deterministic
+DeepCore event payload. Provider-specific validation belongs in the upstream
+adapter. This layer does not authorize commands, sign transactions,
 participate in consensus, or mutate authoritative ledger state.
 """
 
@@ -41,9 +42,9 @@ class MarketPriceEvent:
 
 
 def build_market_price_event(observation: CoinGeckoObservation) -> MarketPriceEvent:
-    """Convert an observation into a deterministic market.price event."""
-    if observation.provider != "coingecko":
-        raise ValueError("market price event requires a CoinGecko observation")
+    """Convert a validated external observation into a deterministic event."""
+    if not observation.provider or not isinstance(observation.provider, str):
+        raise ValueError("observation provider is required")
     if not observation.provenance_hash:
         raise ValueError("observation provenance_hash is required")
 
