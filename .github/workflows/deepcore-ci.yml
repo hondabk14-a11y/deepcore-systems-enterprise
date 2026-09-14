@@ -52,3 +52,12 @@ jobs:
           python -m pytest -q
           MARKET-DATA/test_coingecko_observation.py
           MARKET-DATA/test_coingecko_sdk_adapter.py
+
+      - name: Run market verification, risk, policy, and authorization verification
+        run: >-
+          python -m pytest -q
+          MARKET-DATA/test_market_verification.py
+          MARKET-DATA/test_market_risk.py
+          MARKET-DATA/test_market_policy.py
+          MARKET-DATA/test_market_authorization.py
+          MARKET-DATA/test_authorization_validator.py
