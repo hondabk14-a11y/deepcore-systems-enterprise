@@ -6,10 +6,12 @@ from __future__ import annotations
 import hashlib
 import hmac
 import json
+import re
 from dataclasses import dataclass
 from typing import Any
 
 ZERO_HASH = hashlib.sha256(b"").hexdigest()
+_SHA256_HEX = re.compile(r"^[0-9a-fA-F]{64}$")
 
 
 def canonical(obj: Any) -> bytes:
@@ -83,6 +85,7 @@ class Block:
     events: tuple[Event, ...]
     block_hash: str
     quorum_certificate: Any | None = None
+    authorization_commitment: str = ""
 
 
 class DeepCoreLedger:
@@ -192,7 +195,14 @@ class DeepCoreLedger:
 
     @staticmethod
     def _proposal_body(block: Block) -> dict[str, Any]:
-        return {"height": block.height, "previous_hash": block.previous_hash, "state_root": block.state_root, "event_root": block.event_root, "validator_votes": list(block.validator_votes)}
+        return {
+            "height": block.height,
+            "previous_hash": block.previous_hash,
+            "state_root": block.state_root,
+            "event_root": block.event_root,
+            "validator_votes": list(block.validator_votes),
+            "authorization_commitment": block.authorization_commitment,
+        }
 
     @staticmethod
     def _block_body(block: Block) -> dict[str, Any]:
@@ -201,8 +211,14 @@ class DeepCoreLedger:
             body["quorum_certificate_digest"] = block.quorum_certificate.digest
         return body
 
-    def prepare_block(self, voters: list[str]) -> Block:
+    @staticmethod
+    def _validate_authorization_commitment(value: str) -> None:
+        if value and not _SHA256_HEX.fullmatch(value):
+            raise ValueError("authorization_commitment must be a SHA-256 hex digest")
+
+    def prepare_block(self, voters: list[str], authorization_commitment: str = "") -> Block:
         """Construct the exact proposal that validators should sign, without committing it."""
+        self._validate_authorization_commitment(authorization_commitment)
         if not self.events:
             raise ValueError("no pending events")
         unique = set(voters)
@@ -223,11 +239,12 @@ class DeepCoreLedger:
             "state_root": self.state_root(candidate),
             "event_root": merkle_root([e.event_id for e in pending]),
             "validator_votes": sorted(unique),
+            "authorization_commitment": authorization_commitment,
         }
-        return Block(body["height"], previous_hash, body["state_root"], body["event_root"], tuple(body["validator_votes"]), pending, sha256_obj(body), None)
+        return Block(body["height"], previous_hash, body["state_root"], body["event_root"], tuple(body["validator_votes"]), pending, sha256_obj(body), None, authorization_commitment)
 
-    def commit(self, voters: list[str], quorum_certificate: Any | None = None) -> Block:
-        proposal = self.prepare_block(voters)
+    def commit(self, voters: list[str], quorum_certificate: Any | None = None, authorization_commitment: str = "") -> Block:
+        proposal = self.prepare_block(voters, authorization_commitment)
         if quorum_certificate is not None:
             if quorum_certificate.height != proposal.height:
                 raise ValueError("quorum certificate height mismatch")
@@ -236,7 +253,7 @@ class DeepCoreLedger:
                 raise ValueError("quorum certificate proposal hash mismatch")
             body = self._proposal_body(proposal)
             body["quorum_certificate_digest"] = quorum_certificate.digest
-            block = Block(proposal.height, proposal.previous_hash, proposal.state_root, proposal.event_root, proposal.validator_votes, proposal.events, sha256_obj(body), quorum_certificate)
+            block = Block(proposal.height, proposal.previous_hash, proposal.state_root, proposal.event_root, proposal.validator_votes, proposal.events, sha256_obj(body), quorum_certificate, proposal.authorization_commitment)
         else:
             block = proposal
         candidate = {k: dict(v) for k, v in self.state.items()}
@@ -265,6 +282,10 @@ class DeepCoreLedger:
         return replayed
 
     def verify_block(self, block: Block, previous_hash: str) -> bool:
+        try:
+            self._validate_authorization_commitment(block.authorization_commitment)
+        except ValueError:
+            return False
         body = self._block_body(block)
         return block.previous_hash == previous_hash and sha256_obj(body) == block.block_hash
 
@@ -282,11 +303,12 @@ def main() -> None:
     ledger = DeepCoreLedger(validators)
     tx = Transaction("validator_A", "validator_B", 100_000, 1_000, 1, "validator_A").sign_ed25519(identities["validator_A"])
     event = ledger.append_ed25519(tx, registry)
-    proposal = ledger.prepare_block(validators[:3])
+    authorization_commitment = sha256_obj({"request_id": "runtime-demo", "policy": "ALLOW"})
+    proposal = ledger.prepare_block(validators[:3], authorization_commitment)
     consensus = SignedQuorumCertificate(validators)
     votes = [consensus.sign_vote(v, proposal, 0, identities[v]) for v in validators[:3]]
     certificate = consensus.build_certificate(proposal, 0, votes, registry)
-    block = ledger.commit(validators[:3], certificate)
+    block = ledger.commit(validators[:3], certificate, authorization_commitment)
     score, category = ledger.ssil_risk(tx)
     print("=== DeepCore Runtime Evidence ===")
     print(f"validators={len(validators)} f={ledger.f} quorum={ledger.quorum}")
@@ -294,6 +316,7 @@ def main() -> None:
     print(f"event_id={event.event_id}")
     print(f"event_root={block.event_root}")
     print(f"state_root={block.state_root}")
+    print(f"authorization_commitment={block.authorization_commitment}")
     print(f"block_hash={block.block_hash}")
     print(f"qc_digest={certificate.digest}")
     print(f"qc_verified={consensus.verify_certificate(proposal, certificate, registry)}")
