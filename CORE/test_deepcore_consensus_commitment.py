@@ -66,3 +66,16 @@ def test_other_proposal_fields_cannot_hide_commitment_tampering():
     assert baseline.event_root == tampered.event_root
     assert baseline.validator_votes == tampered.validator_votes
     assert consensus.proposal_hash(baseline) != consensus.proposal_hash(tampered)
+
+
+def test_malformed_commitment_is_rejected_by_ledger_proposal_builder():
+    from CORE.deepcore_runtime import DeepCoreLedger, Event, Transaction
+
+    ledger = DeepCoreLedger(["validator_A", "validator_B", "validator_C", "validator_D"])
+    ledger.events.append(Event(Transaction("validator_A", "validator_B", 1, 0, 1, "validator_A")))
+    try:
+        ledger.prepare_block(["validator_A", "validator_B", "validator_C"], "not-a-digest")
+    except ValueError as exc:
+        assert "SHA-256 hex digest" in str(exc)
+    else:
+        raise AssertionError("malformed authorization commitment was accepted")
