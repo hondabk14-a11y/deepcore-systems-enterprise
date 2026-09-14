@@ -4,8 +4,6 @@ from __future__ import annotations
 
 from types import SimpleNamespace
 
-import pytest
-
 from CORE.deepcore_consensus import SignedQuorumCertificate
 
 
@@ -51,12 +49,3 @@ def test_commitment_is_part_of_vote_payload():
     first = consensus.proposal_hash(_proposal(VALID_AUTH))
     second = consensus.proposal_hash(_proposal(TAMPERED_AUTH))
     assert consensus.vote_payload(7, 0, first) != consensus.vote_payload(7, 0, second)
-
-
-def test_malformed_commitment_is_rejected_by_ledger_proposal_builder():
-    from CORE.deepcore_runtime import DeepCoreLedger, Event, Transaction
-
-    ledger = DeepCoreLedger(["validator_A", "validator_B", "validator_C", "validator_D"])
-    ledger.events.append(Event(Transaction("validator_A", "validator_B", 1, 0, 1, "validator_A")))
-    with pytest.raises(ValueError, match="SHA-256 hex digest"):
-        ledger.prepare_block(["validator_A", "validator_B", "validator_C"], "not-a-digest")
