@@ -2,7 +2,9 @@ name: DeepCore CI
 
 on:
   push:
-    branches: [main]
+    branches:
+      - main
+      - 'feat/**'
   pull_request:
   workflow_dispatch:
 
