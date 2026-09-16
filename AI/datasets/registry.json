@@ -1,0 +1,22 @@
+{
+  "financial-news-train": {
+    "repository": "zeroshot/twitter-financial-news-sentiment",
+    "revision": "ccbe24de388e287beb92dd393a335c376b350ac3",
+    "file": "sent_train.csv",
+    "split": "train",
+    "sha256": "71aa99d0d37feced03c999ec23b5b25302c92f39d69b6acb0a37aa076c5420e8",
+    "license": "mit",
+    "purpose": "financial sentiment training",
+    "labels": {"0": "bearish", "1": "bullish", "2": "neutral"}
+  },
+  "financial-news-validation": {
+    "repository": "zeroshot/twitter-financial-news-sentiment",
+    "revision": "ccbe24de388e287beb92dd393a335c376b350ac3",
+    "file": "sent_valid.csv",
+    "split": "validation",
+    "sha256": "31ea8274c98b52212daa68f2fb962811bf1913c1efe51b99765c8e2311806de6",
+    "license": "mit",
+    "purpose": "financial sentiment evaluation",
+    "labels": {"0": "bearish", "1": "bullish", "2": "neutral"}
+  }
+}
