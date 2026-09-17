@@ -1,0 +1,81 @@
+name: DeepCore Hugging Face Reference Service
+
+on:
+  pull_request:
+    paths:
+      - 'CORE/**'
+      - 'SERVICES/**'
+      - 'deploy/huggingface/**'
+      - 'tests/**'
+      - '.github/workflows/huggingface-space.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: huggingface-space-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install dependencies
+        run: python -m pip install -r deploy/huggingface/requirements.txt 'pytest>=8,<9' 'httpx>=0.27,<1'
+      - name: Verify runtime and service
+        run: python -m pytest -q tests CORE/test_deepcore_consensus_commitment.py
+      - name: Package explicit source allowlist
+        run: python -m deploy.huggingface.package_space --output /tmp/deepcore-space --source-commit "$GITHUB_SHA"
+      - name: Build service container
+        run: docker build --tag deepcore-reference:ci /tmp/deepcore-space
+      - name: Verify container health and evidence
+        shell: bash
+        run: |
+          set -euo pipefail
+          docker run -d --name deepcore-reference -p 127.0.0.1:7860:7860 deepcore-reference:ci
+          trap 'docker logs deepcore-reference; docker rm -f deepcore-reference' EXIT
+          for attempt in $(seq 1 30); do
+            if curl --fail --silent http://127.0.0.1:7860/readyz; then break; fi
+            sleep 2
+          done
+          curl --fail --silent http://127.0.0.1:7860/api/status > /tmp/status.json
+          python - <<'PY'
+          import json, os
+          evidence = json.load(open('/tmp/status.json'))
+          assert evidence['source_commit'] == os.environ['GITHUB_SHA']
+          assert all(evidence['checks'].values())
+          assert evidence['production_certified'] is False
+          PY
+
+  deploy:
+    if: github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main'
+    needs: verify
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    environment: huggingface
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: python -m pip install 'huggingface_hub>=1,<2'
+      - name: Package reviewed revision
+        run: python -m deploy.huggingface.package_space --output /tmp/deepcore-space --source-commit "$GITHUB_SHA"
+      - name: Deploy and verify private Space
+        env:
+          HF_TOKEN: ${{ secrets.HF_TOKEN }}
+          HF_SPACE_ID: ${{ vars.HF_SPACE_ID }}
+        run: |
+          test -n "$HF_TOKEN" || { echo 'Configure HF_TOKEN in the huggingface GitHub environment'; exit 1; }
+          test -n "$HF_SPACE_ID" || { echo 'Configure HF_SPACE_ID in the huggingface GitHub environment'; exit 1; }
+          python -m deploy.huggingface.publish_space --folder /tmp/deepcore-space
