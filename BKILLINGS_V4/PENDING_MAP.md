@@ -10,7 +10,8 @@ Evidence date: 2026-09-26. This map distinguishes executable local results from 
 | Distributed consensus | Four independent local processes; 3-of-4 signatures; durable no-double-vote locks; one offline node tolerated in demonstrated run | Partial reference implementation | Audited BFT protocol with view changes, leader recovery, partition healing, catch-up, multi-host TLS and failure testing |
 | Key custody | Encrypted PKCS8, permissions/ownership/symlink checks, key survives process restart | Local at-rest protection implemented | External signer/HSM/KMS, rotation/revocation, backup ceremonies, compromise drills, protected monotonic vote locks |
 | Admission/authorization | Genesis writer allowlist; authenticated loopback API; bounded input | Tested local harness | Per-node production identities, TLS, rate limits, DoS protection, production application server |
-| Performance testing | 100 blocks / 1,000 transactions, 16.64 tx/s, 603.79ms median block, 1135.08ms P95, 234.63ms complete replay | Local baseline executed | Define target SLOs; checkpoint/incremental optimization; sustained multi-host load and fault injection |
+| Incremental verification | Connection-local verified cache, unchanged transition rules, explicit full audit, external-change invalidation and differential tests | Implemented locally | Independent review, durable checkpoint design, multi-host/state-growth scaling tests |
+| Performance testing | Current same-input comparison: 1,000 transactions, 9.34 tx/s full replay versus 501.48 tx/s incremental; 24.50ms incremental P95; identical final roots | Local baseline and optimization executed | Define target SLOs; independent review; repeated sustained multi-host load, state growth and fault injection |
 | Deployment | Local four-process service launched and exercised; validation Dockerfile prepared | Local execution done; hosted deployment blocked | Docker builder unavailable; HF OAuth has read-repos/jobs but no repo-write; provision an authorized private target and persistence before deployment |
 | Repository integration | New isolated BKILLINGS_V4 directory proposed through draft PR | Review artifact | Review and merge approval; integrate with CORE through an explicit adapter/migration |
 | Existing deployment PR | PR #30 open, based on fix/weighted-quorum-test (#29), head 71425724b7a3a9f5f95d212f54fc15d9c33e4241 | Existing dependency unresolved | Review #29 then retarget/review #30; reproduce CI startup diagnostic and obtain passing jobs |
@@ -18,7 +19,7 @@ Evidence date: 2026-09-26. This map distinguishes executable local results from 
 
 ## Verification counts
 
-69 tests passed together in this turn: 24 original saved DeepCore blockchain tests, 21 prior math/runtime/storage tests, and 24 new hardening tests. This is not the entire GitHub repository test suite. The separate four-process test completed successfully. `evidence/cluster.json` and `evidence/benchmark.json` contain observed results. New-directory-only verification runs 24 tests.
+69 tests passed together in this turn: 24 original saved DeepCore blockchain tests, 21 prior math/runtime/storage tests, and 24 new hardening tests. This is not the entire GitHub repository test suite. The separate four-process test completed successfully. `evidence/cluster.json` and `evidence/benchmark.json` contain observed results. That earlier new-directory-only run had 24 tests. The incremental-verification update passes 38 tests (24 hardening plus 14 new incremental checks); the previous combined 69-test suite was not rerun for this update. See evidence/incremental-tests.json.
 
 ## Verified access constraints
 
@@ -30,6 +31,6 @@ GitHub repository is private and accessible with push permission. No merge or vi
 2. Select an established BFT engine or complete a reviewed view-change design. Never unlock conflicting votes to make the test network progress.
 3. Select protected signer custody and a lock-preserving disaster recovery model before independent production validators.
 4. Obtain authorized deployment credentials and persistent staging hosts, build the container, run multi-host recovery/load drills, and verify the deployed revision.
-5. Optimize only against agreed capacity/latency SLOs while preserving replay equivalence.
+5. Review the incremental cache and set capacity/latency SLOs; retain full-audit equivalence and measure multi-host behavior before production use.
 
 These items remain pending because a local test cannot establish production consensus liveness, external key protection, or independent assurance, and the required hosting permissions/infrastructure are unavailable.

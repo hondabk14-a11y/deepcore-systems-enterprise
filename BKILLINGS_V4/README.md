@@ -20,7 +20,7 @@ Run these commands from this directory. `cluster_demo.py` creates four independe
 - Replay evaluates recorded timestamps against recorded block time. Only live voting checks the wall clock; archival verification does not.
 - Fixed committee signed certificates require N-f distinct registered validators with N >= 3f+1.
 - Persistent per-validator, per-height vote locks are committed before a signature is released. A validator refuses to sign two different blocks at the same height.
-- SQLite WAL/FULL persistence verifies history in a single pass. Finalized head metadata catches inconsistent suffix deletion. Optional externally trusted checkpoints detect coordinated rollback past the checkpoint.
+- SQLite WAL/FULL persistence verifies history in a single pass on startup or explicit audit. A connection-local verified-state cache validates subsequent blocks incrementally and is invalidated by tracked database/configuration changes. Finalized head metadata catches inconsistent suffix deletion. Optional externally trusted checkpoints detect coordinated rollback past the checkpoint.
 - PKCS8 encrypted local Ed25519 keys, owner-only file permissions, no-overwrite creation, symlink rejection, and passphrase delivery over an input pipe to the local harness.
 - Authenticated local vote/commit/readiness/status routes, SQLite backup API, restart and restore checks.
 
@@ -38,7 +38,7 @@ Do not reinterpret v1 signatures or roots as v2. Existing v1 files remain unchan
 
 ## Operation and limitations
 
-Initialize a fresh database explicitly with `Ledger(path, spec, create=True)`. Normal opens reject a missing database. Keep databases on local storage with correct locking/fsync behavior. Use `Ledger.backup(destination)` for consistent backups. Store externally trusted checkpoints outside the same failure domain. Retaining all signatures and replaying the full history on every operation is intentionally conservative and becomes expensive; incremental validation/checkpoint optimization requires further design and tests.
+Initialize a fresh database explicitly with `Ledger(path, spec, create=True)`. Normal opens reject a missing database. Keep databases on local storage with correct locking/fsync behavior. Use `Ledger.backup(destination)` for consistent backups. Store externally trusted checkpoints outside the same failure domain. All signatures remain in history. Use `snapshot(full_audit=True)` to reverify every block and certificate, or construct `Ledger(..., incremental=False)` for full replay on each operation. Incremental mode defaults on after a successful startup replay. Its cache is volatile, connection-local, and never substitutes an unauthenticated disk snapshot for history. See INCREMENTAL_VERIFICATION.md for the invalidation model and limitations.
 
 `node.py` is a loopback-only test harness built with Python's basic HTTP server, not a production web server. It is single-threaded, uses a shared local bearer token, and lacks TLS, workload isolation and robust DoS resistance. The Dockerfile is a **validation image**, not a deployment of the financial or consensus system. Production endpoints must use reviewed transport, per-node identities, authorization and rate limits.
 

@@ -2,16 +2,19 @@
 import json
 import os
 import sqlite3
+from copy import deepcopy
 from pathlib import Path
 from protocol import (canonical, digest, genesis, initial_state, spec_id, validate_spec,
                       validate_proposal, verify_certificate, public, vote_message, integer, hexvalue)
 
 
 class Ledger:
-    def __init__(self, path, spec, create=False, checkpoint=None):
+    def __init__(self, path, spec, create=False, checkpoint=None, incremental=True):
         validate_spec(spec)
         self.spec = json.loads(canonical(spec))
         self.checkpoint = checkpoint
+        self.incremental = incremental
+        self._verified_cache = None
         path = Path(path)
         if not path.exists() and not create: raise ValueError('Database missing; explicit initialization required')
         if create:
@@ -53,13 +56,34 @@ class Ledger:
         if not matched: raise ValueError('Trusted checkpoint missing or mismatched')
         return {'state': state, 'height': height, 'hash': head, 'timestamp': timestamp}
 
-    def snapshot(self):
+    def _cache_token(self):
+        # Call only inside an explicit transaction. Never compare tokens across
+        # connections or sample them after releasing the transaction snapshot.
+        return (self.db.execute('PRAGMA data_version').fetchone()[0],
+                self.db.total_changes,
+                self.db.execute('PRAGMA schema_version').fetchone()[0],
+                spec_id(self.spec), canonical(self.checkpoint))
+
+    def _verified(self, full_audit=False):
+        token = self._cache_token()
+        if (self.incremental and not full_audit and self._verified_cache is not None
+                and token == self._verified_cache[0]):
+            return deepcopy(self._verified_cache[1])
+        return self._replay()
+
+    def _publish(self, value, token):
+        self._verified_cache = (token, deepcopy(value)) if self.incremental else None
+
+    def snapshot(self, full_audit=False):
         self.db.execute('BEGIN')
         try:
-            value = self._replay()
+            value = self._verified(full_audit)
+            token = self._cache_token()
             self.db.commit()
+            self._publish(value, token)
             return value
         except BaseException:
+            self._verified_cache = None
             self.db.rollback(); raise
 
     def vote(self, key, block, now):
@@ -67,31 +91,45 @@ class Ledger:
         if validator not in self.spec['validators']: raise ValueError('Signer outside committee')
         self.db.execute('BEGIN IMMEDIATE')
         try:
-            state = self._replay()
+            state = self._verified()
             validate_proposal(block, self.spec, state['state'], state['height']+1,
                               state['hash'], state['timestamp'], now=now)
             block_hash = digest('block', block)
             existing = self.db.execute('SELECT hash FROM locks WHERE validator=? AND height=?', (validator, block['height'])).fetchone()
             if existing and existing[0] != block_hash: raise ValueError('Conflicting vote refused')
             if not existing:
+                before = self.db.total_changes
                 self.db.execute('INSERT INTO locks VALUES(?,?,?)', (validator, block['height'], block_hash))
+                if self.db.total_changes != before + 1:
+                    raise ValueError('Unexpected SQL side effects')
+            token = self._cache_token()
             # Persist the lock before releasing any signature.
             self.db.commit()
+            self._publish(state, token)
         except BaseException:
+            self._verified_cache = None
             self.db.rollback(); raise
         return {'validator': validator, 'signature': key.sign(vote_message(self.spec, block)).hex()}
 
     def commit(self, block, votes):
         self.db.execute('BEGIN IMMEDIATE')
         try:
-            snapshot = self._replay()
-            validate_proposal(block, self.spec, snapshot['state'], snapshot['height']+1,
-                              snapshot['hash'], snapshot['timestamp'])
+            snapshot = self._verified()
+            new_state = validate_proposal(block, self.spec, snapshot['state'], snapshot['height']+1,
+                                          snapshot['hash'], snapshot['timestamp'])
             verify_certificate(self.spec, block, votes)
+            before = self.db.total_changes
             self.db.execute('INSERT INTO blocks VALUES(?,?,?)', (block['height'], canonical(block).decode(), canonical(votes).decode()))
             self.db.execute('UPDATE meta SET height=?, head=? WHERE id=1', (block['height'], digest('block', block)))
+            if self.db.total_changes != before + 2:
+                raise ValueError('Unexpected SQL side effects')
+            value = {'state': new_state, 'height': block['height'],
+                     'hash': digest('block', block), 'timestamp': block['timestamp']}
+            token = self._cache_token()
             self.db.commit()
+            self._publish(value, token)
         except BaseException:
+            self._verified_cache = None
             self.db.rollback(); raise
 
     def backup(self, destination):
