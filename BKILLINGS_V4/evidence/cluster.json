@@ -1,0 +1,15 @@
+{
+  "validator_processes_started": 4,
+  "available_to_finalize": 3,
+  "offline_validators_tolerated_in_demo": 1,
+  "quorum": "3-of-4",
+  "matching_finalized_heads": 3,
+  "height": 1,
+  "unauthorized_request_rejected": true,
+  "conflicting_vote_rejected": true,
+  "two_votes_rejected": true,
+  "restart_head_and_identity_preserved": true,
+  "transport": "authenticated HTTP on loopback",
+  "independent_hosts": false,
+  "production_certified": false
+}
