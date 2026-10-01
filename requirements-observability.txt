@@ -1,0 +1,9 @@
+# Optional DeepCore observability dependencies.
+# Keep these separate from the consensus/runtime dependency set.
+opentelemetry-api==1.45.0
+opentelemetry-sdk==1.45.0
+opentelemetry-exporter-otlp-proto-grpc==1.45.0
+
+# OpenAI instrumentation remains a beta package as of 2026-10-01.
+# Install only when DEEPCORE_OTEL_INSTRUMENT_OPENAI=1 is required.
+opentelemetry-instrumentation-openai-v2==2.4b0
