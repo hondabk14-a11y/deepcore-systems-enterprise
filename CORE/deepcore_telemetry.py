@@ -82,18 +82,27 @@ def initialize_telemetry(
             }
         )
 
-        provider = TracerProvider(resource=resource)
         endpoint = os.getenv("OTEL_EXPORTER_OTLP_ENDPOINT", "http://localhost:4317")
         exporter = OTLPSpanExporter(
             endpoint=endpoint,
             insecure=endpoint.startswith("http://"),
         )
-        provider.add_span_processor(BatchSpanProcessor(exporter))
-        trace.set_tracer_provider(provider)
+        processor = BatchSpanProcessor(exporter)
+
+        current_provider = trace.get_tracer_provider()
+        if hasattr(current_provider, "add_span_processor"):
+            provider = current_provider
+            provider.add_span_processor(processor)
+            owns_provider = False
+        else:
+            provider = TracerProvider(resource=resource)
+            provider.add_span_processor(processor)
+            trace.set_tracer_provider(provider)
+            owns_provider = True
 
         tracer = trace.get_tracer("deepcore.ai.tracer", service_version)
 
-        _STATE.provider = provider
+        _STATE.provider = provider if owns_provider else None
         _STATE.tracer = tracer
         _STATE.enabled = True
 
