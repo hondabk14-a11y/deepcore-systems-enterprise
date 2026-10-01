@@ -2,11 +2,12 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+import hashlib
 from typing import Any, Iterable
 
 from checkpoint import LedgerCheckpoint, verify_checkpoint
 from invariants import verify_domain_events
-from ledger import EventSourcedLedger
+from ledger import EventSourcedLedger, canonical_json
 from trusted_anchor import TrustedCheckpointAnchor, resolve_checkpoint_anchor
 
 
@@ -18,6 +19,20 @@ class ReducerError(ValueError):
 class LedgerState:
     balance: int = 0
     event_count: int = 0
+
+
+def state_hash(state: LedgerState) -> str:
+    """SHA-256 commitment to reference reducer v1 state, including its domain."""
+    if type(state.balance) is not int or type(state.event_count) is not int:
+        raise ReducerError("state fields must be integers")
+    if state.event_count < 0:
+        raise ReducerError("event_count cannot be negative")
+    return hashlib.sha256(canonical_json({
+        "domain": "deepcore-reference-ledger-state",
+        "reducer_version": 1,
+        "balance": state.balance,
+        "event_count": state.event_count,
+    })).hexdigest()
 
 
 def apply_event(state: LedgerState, event: dict[str, Any]) -> LedgerState:
