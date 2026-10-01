@@ -19,7 +19,18 @@ jobs:
     name: Production Gate
     runs-on: ubuntu-latest
     timeout-minutes: 15
+    env:
+      JOB_LOG_DIR: ${{ runner.temp }}/deepcore-job-logs
     steps:
+      - name: Initialize job logs
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p "$JOB_LOG_DIR"
+          printf 'repository=%s\ncommit=%s\nrun_id=%s\nattempt=%s\n' \
+            "$GITHUB_REPOSITORY" "$GITHUB_SHA" "$GITHUB_RUN_ID" "$GITHUB_RUN_ATTEMPT" \
+            > "$JOB_LOG_DIR/source.txt"
+
       - name: Checkout
         uses: actions/checkout@v4
 
@@ -32,15 +43,24 @@ jobs:
 
       - name: Install ledger test dependencies
         working-directory: CORE/event-sourced-ledger
-        run: python -m pip install --disable-pip-version-check -r requirements-test.txt
+        shell: bash
+        run: |
+          set -euo pipefail
+          python -m pip install --disable-pip-version-check -r requirements-test.txt 2>&1 | tee "$JOB_LOG_DIR/dependencies.log"
 
       - name: Run event-sourced ledger tests
         working-directory: CORE/event-sourced-ledger
-        run: python -m unittest discover -s . -p 'test_*.py' -v
+        shell: bash
+        run: |
+          set -euo pipefail
+          python -m unittest discover -s . -p 'test_*.py' -v 2>&1 | tee "$JOB_LOG_DIR/ledger-tests.log"
 
       - name: Verify ledger source compiles
         working-directory: CORE/event-sourced-ledger
-        run: python -m py_compile ledger.py test_ledger.py
+        shell: bash
+        run: |
+          set -euo pipefail
+          python -m py_compile ledger.py test_ledger.py 2>&1 | tee "$JOB_LOG_DIR/compile.log"
 
       - name: Check for tracked secret files
         shell: bash
@@ -123,3 +143,24 @@ jobs:
         run: |
           echo 'DeepCore repository production gate PASSED: required repository, compilation, ledger tests, and secret-file checks completed successfully.'
           echo 'This is repository gate evidence only. Production certification remains NOT CERTIFIED until environment-specific and independent evidence is verified.'
+
+      - name: Record job outcome and log hashes
+        if: ${{ always() }}
+        shell: bash
+        env:
+          JOB_STATUS: ${{ job.status }}
+        run: |
+          set -euo pipefail
+          mkdir -p "$JOB_LOG_DIR"
+          printf 'job_status=%s\n' "$JOB_STATUS" > "$JOB_LOG_DIR/outcome.txt"
+          cd "$JOB_LOG_DIR"
+          find . -maxdepth 1 -type f ! -name SHA256SUMS -print0 | sort -z | xargs -0 -r sha256sum > SHA256SUMS
+
+      - name: Upload job logs
+        if: ${{ always() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: deepcore-job-logs-${{ github.run_id }}-${{ github.run_attempt }}
+          path: ${{ env.JOB_LOG_DIR }}
+          if-no-files-found: error
+          retention-days: 30
