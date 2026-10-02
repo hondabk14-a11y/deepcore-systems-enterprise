@@ -1,0 +1,15 @@
+**
+!CORE/
+!CORE/deepcore_runtime.py
+!CORE/deepcore_crypto.py
+!CORE/deepcore_key_registry.py
+!CORE/deepcore_consensus.py
+!CORE/binance_observer.py
+!SIMULATION/
+!SIMULATION/local_server.py
+!deploy/
+!deploy/simulation/
+!deploy/simulation/requirements.txt
+!deploy/simulation/Dockerfile
+!deploy/simulation/Dockerfile.dockerignore
+!deploy/simulation/binance-snapshot.json
