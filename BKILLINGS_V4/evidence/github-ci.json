@@ -1,0 +1,9 @@
+{
+  "checked_at": "2026-09-26",
+  "source_commit": "7e2cc5c804bad76a48cfacbd4990f59c6944a826",
+  "run_id": 36233829984,
+  "conclusion": "startup_failure",
+  "url": "https://github.com/hondabk14-a11y/deepcore-systems-enterprise/actions/runs/36233829984",
+  "github_ci_passed": false,
+  "diagnostic": "Run startup failed; no successful hosted verification is claimed. Cause is not exposed by the run-list connector."
+}
