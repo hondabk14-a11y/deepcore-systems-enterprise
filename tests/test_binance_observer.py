@@ -1,4 +1,6 @@
 import copy
+import sqlite3
+from pathlib import Path
 import tempfile
 import unittest
 from unittest.mock import patch
@@ -25,6 +27,36 @@ class BinanceTests(unittest.TestCase):
         self.journal = ObservationJournal(self.path)
         self.assertFalse(self.journal.append(copy.deepcopy(self.event)))
         self.assertEqual(before, self.journal.replay())
+
+    def test_read_only_replay_matches_writer_and_rejects_writes(self):
+        self.journal.append(self.event)
+        expected = self.journal.replay()
+        reader = ObservationJournal(self.path, read_only=True)
+        try:
+            self.assertEqual(expected, reader.replay())
+            with self.assertRaises(sqlite3.OperationalError):
+                reader.db.execute("DELETE FROM binance_observations")
+        finally:
+            reader.close()
+        self.assertEqual(expected, self.journal.replay())
+
+    def test_read_only_missing_path_not_created(self):
+        path = Path(self.directory.name) / "missing.sqlite"
+        with self.assertRaises(sqlite3.OperationalError):
+            ObservationJournal(str(path), read_only=True)
+        self.assertFalse(path.exists())
+
+    def test_read_only_empty_database_not_initialized(self):
+        path = Path(self.directory.name) / "empty?#.sqlite"
+        sqlite3.connect(path).close()
+        before = path.read_bytes()
+        reader = ObservationJournal(str(path), read_only=True)
+        try:
+            with self.assertRaises(sqlite3.OperationalError):
+                reader.replay()
+        finally:
+            reader.close()
+        self.assertEqual(before, path.read_bytes())
 
     def test_tampering(self):
         self.journal.append(self.event)

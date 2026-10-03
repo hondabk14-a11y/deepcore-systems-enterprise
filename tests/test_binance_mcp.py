@@ -19,6 +19,7 @@ class BridgeTests(unittest.TestCase):
                                              "verify_binance_replay"})
                 self.assertTrue(tools["binance_quote"].annotations.readOnlyHint)
                 self.assertFalse(tools["record_binance_observation"].annotations.readOnlyHint)
+                self.assertTrue(tools["verify_binance_replay"].annotations.readOnlyHint)
                 quote = await server.call_tool("binance_quote", {"symbol": "BTCUSDT"})
                 self.assertIn("BTCUSDT", str(quote))
                 record = await server.call_tool("record_binance_observation", {"symbol": "BTCUSDT"})

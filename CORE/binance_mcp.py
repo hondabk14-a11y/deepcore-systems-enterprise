@@ -38,7 +38,7 @@ def create_bridge(journal_path, fetcher=fetch_quote):
         """Verify journal linkage and return reconstructed market observation state."""
         if not path.is_file():
             raise ValueError("journal does not exist; record an observation first")
-        journal = ObservationJournal(str(path))
+        journal = ObservationJournal(str(path), read_only=True)
         try:
             return journal.replay()
         finally:
