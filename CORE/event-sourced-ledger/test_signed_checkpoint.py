@@ -36,6 +36,31 @@ class TestSignedCheckpoint(unittest.TestCase):
             verify_signed_checkpoint(self.signed, key_resolver=lambda _: wrong,
                                      verifier=__import__("ed25519_checkpoint").Ed25519CheckpointVerifier())
 
+    def test_object_resolver_remains_supported(self):
+        public_key = self.public_key
+
+        class Resolver:
+            def resolve(self, key_id):
+                return public_key if key_id == "key-1" else None
+
+        result = verify_signed_checkpoint(
+            self.signed, key_resolver=Resolver(),
+            verifier=__import__("ed25519_checkpoint").Ed25519CheckpointVerifier(),
+        )
+        self.assertEqual(result, self.signed.to_checkpoint())
+
+    def test_missing_key_and_resolver_failure_fail_closed(self):
+        def broken(_):
+            raise RuntimeError("resolver unavailable")
+
+        for resolver in (lambda _: None, broken, object()):
+            with self.subTest(resolver=type(resolver).__name__):
+                with self.assertRaises(SignatureVerificationError):
+                    verify_signed_checkpoint(
+                        self.signed, key_resolver=resolver,
+                        verifier=__import__("ed25519_checkpoint").Ed25519CheckpointVerifier(),
+                    )
+
 
 if __name__ == "__main__":
     unittest.main()

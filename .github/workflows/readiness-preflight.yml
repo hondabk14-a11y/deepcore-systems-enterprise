@@ -52,8 +52,8 @@ jobs:
       - name: Run SSIL readiness adversarial suite
         run: python -m unittest discover -s SECURITY/SSIL -p 'test_ssil*.py' -v
 
-      - name: Run readiness SSIL audit-record tests
-        run: python -m unittest PRODUCTION-READINESS-GATES/test-write-readiness-ssil-audit-record.py -v
+      - name: Run all readiness regression tests
+        run: python -m unittest discover -s PRODUCTION-READINESS-GATES -p 'test_*.py' -v
 
       - name: Build machine-readable evidence manifest
         env:
