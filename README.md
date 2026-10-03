@@ -93,3 +93,9 @@ Production readiness requires evidence, not architecture diagrams alone. Humanit
 
 These labels must not be conflated.
 
+
+## Interactive command center
+
+The [Deepcore command center](SIMULATION/command-center/README.md) provides a standalone dashboard with synthetic telemetry, 21 inspectable modules, diagnostics, and event-log export. Run `python3 SIMULATION/command-center/server.py` from the repository root and open port 4173. It does not connect to the authoritative runtime or production services.
+
+See the [consolidation inventory](docs/DEEPCORE-CONSOLIDATION.md) for discovered ChatGPT task provenance, open project branches, and remaining integration dependencies. Browser verification and BKILLINGS workspace synchronization remain pending.
