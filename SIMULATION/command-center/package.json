@@ -1,0 +1,10 @@
+{
+  "name": "deepcore-command-center",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "dev": "python3 server.py",
+    "check": "node --check app.js",
+    "test": "node test.cjs"
+  }
+}
