@@ -19,13 +19,13 @@ jobs:
     name: Production Gate
     runs-on: ubuntu-latest
     timeout-minutes: 15
-    env:
-      JOB_LOG_DIR: ${{ runner.temp }}/deepcore-job-logs
     steps:
       - name: Initialize job logs
         shell: bash
         run: |
           set -euo pipefail
+          JOB_LOG_DIR="$RUNNER_TEMP/deepcore-job-logs"
+          printf 'JOB_LOG_DIR=%s\n' "$JOB_LOG_DIR" >> "$GITHUB_ENV"
           mkdir -p "$JOB_LOG_DIR"
           printf 'repository=%s\ncommit=%s\nrun_id=%s\nattempt=%s\n' \
             "$GITHUB_REPOSITORY" "$GITHUB_SHA" "$GITHUB_RUN_ID" "$GITHUB_RUN_ATTEMPT" \
@@ -63,13 +63,7 @@ jobs:
           python -m py_compile ledger.py test_ledger.py 2>&1 | tee "$JOB_LOG_DIR/compile.log"
 
       - name: Check for tracked secret files
-        shell: bash
-        run: |
-          set -euo pipefail
-          if git ls-files | grep -E '(^|/)(\.env($|\.)|.*\.(pem|key|p12|pfx|jks)$|(^|/)(secrets|credentials|wallets)/)' ; then
-            echo 'Potential secret material is tracked in Git.'
-            exit 1
-          fi
+        run: python PRODUCTION-READINESS-GATES/tracked_secret_check.py
 
       - name: Verify repository hygiene
         shell: bash
@@ -151,6 +145,7 @@ jobs:
           JOB_STATUS: ${{ job.status }}
         run: |
           set -euo pipefail
+          JOB_LOG_DIR="${JOB_LOG_DIR:-$RUNNER_TEMP/deepcore-job-logs}"
           mkdir -p "$JOB_LOG_DIR"
           printf 'job_status=%s\n' "$JOB_STATUS" > "$JOB_LOG_DIR/outcome.txt"
           cd "$JOB_LOG_DIR"
