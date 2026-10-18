@@ -1,0 +1,36 @@
+name: Publish MiniCPM Vision Space
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  upload-private-space:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      HF_TOKEN: ${{ secrets.HF_TOKEN }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Prepare Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+      - name: Check required secret without exposing its value
+        shell: bash
+        run: |
+          if [ -z "$HF_TOKEN" ]; then
+            echo "::error::Set the HF_TOKEN GitHub Actions repository secret before deploying."
+            exit 1
+          fi
+      - name: Validate Python source
+        run: |
+          python -m py_compile AI/minicpm-o-2-6-space/app.py AI/minicpm-o-2-6-space/inference.py AI/minicpm-o-2-6-space/publish_space.py
+      - name: Install Hugging Face publisher
+        run: python -m pip install --disable-pip-version-check huggingface_hub==0.25.2
+      - name: Publish private Gradio Space without assigning GPU
+        env:
+          HF_HUB_DISABLE_TELEMETRY: '1'
+        run: python AI/minicpm-o-2-6-space/publish_space.py --repo-id BKillings/minicpm-o-2-6-vision-demo
