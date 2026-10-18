@@ -3,7 +3,7 @@ name: DeepCore Diagnostic Test
 on:
   workflow_dispatch:
   push:
-    branches: [main]
+    # Run the minimal runner diagnostic when this workflow changes on any branch.
     paths:
       - '.github/workflows/diagnostic-test.yml'
   pull_request:
