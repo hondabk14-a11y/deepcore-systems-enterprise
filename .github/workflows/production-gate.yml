@@ -19,13 +19,13 @@ jobs:
     name: Production Gate
     runs-on: ubuntu-latest
     timeout-minutes: 15
-    env:
-      JOB_LOG_DIR: ${{ runner.temp }}/deepcore-job-logs
     steps:
       - name: Initialize job logs
         shell: bash
         run: |
           set -euo pipefail
+          JOB_LOG_DIR="$RUNNER_TEMP/deepcore-job-logs"
+          echo "JOB_LOG_DIR=$JOB_LOG_DIR" >> "$GITHUB_ENV"
           mkdir -p "$JOB_LOG_DIR"
           printf 'repository=%s\ncommit=%s\nrun_id=%s\nattempt=%s\n' \
             "$GITHUB_REPOSITORY" "$GITHUB_SHA" "$GITHUB_RUN_ID" "$GITHUB_RUN_ATTEMPT" \
@@ -151,6 +151,7 @@ jobs:
           JOB_STATUS: ${{ job.status }}
         run: |
           set -euo pipefail
+          JOB_LOG_DIR="${JOB_LOG_DIR:-$RUNNER_TEMP/deepcore-job-logs}"
           mkdir -p "$JOB_LOG_DIR"
           printf 'job_status=%s\n' "$JOB_STATUS" > "$JOB_LOG_DIR/outcome.txt"
           cd "$JOB_LOG_DIR"
