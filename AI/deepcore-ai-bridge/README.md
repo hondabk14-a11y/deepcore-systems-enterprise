@@ -20,6 +20,20 @@ Set `OPENAI_API_KEY` in the local `.env`, then:
 npm run review -- ../../CORE/event-sourced-ledger/ledger.py
 ```
 
+## Bounded advisory review
+
+The review command uses the **JavaScript OpenAI SDK** and the Responses API. Keep provider credentials in the bridge's local environment, never in the VS Code extension, repository, browser, or request text. It accepts the official OpenAI endpoint, OpenRouter, or an HTTP(S) loopback model server. Arbitrary remote inference endpoints are rejected to avoid leaking the OpenAI API key to another host. For a loopback server requiring an auth token, set `DEEPCORE_LOCAL_AI_API_KEY`.
+
+Reviews are non-persistent (`store: false`), have a 30-second timeout, disable automatic retries, and reject source files larger than 128 KiB. Files must reside inside this repository after symlink resolution. Paths conventionally used for secrets, credentials, wallet material, and key files are blocked. **Path screening is not a secret scanner:** inspect any source for embedded tokens or personal data before requesting a cloud review. The rate guard is six requests per 60 seconds **per adapter instance/process**; it does not impose a distributed or cross-CLI rate limit. A future publicly reachable HTTP service must separately authenticate callers and apply a centralized limiter.
+
+Offline verification (no credential or network required):
+
+```bash
+npm run local:test
+```
+
+A successful offline test does not validate provider connectivity, authorization, access to the configured model, or deployment readiness.
+
 ## OpenRouter review
 
 Set the credential only in the local environment:
