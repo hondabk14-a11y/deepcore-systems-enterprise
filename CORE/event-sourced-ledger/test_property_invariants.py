@@ -37,7 +37,10 @@ class TestPropertyInvariants(unittest.TestCase):
 
     def test_malformed_persisted_json_blocks_verification(self):
         path = Path(tempfile.mktemp())
-        path.write_text('{"event":"CREDIT"}\nnot-json\n', encoding="utf-8")
+        ledger = EventSourcedLedger(path)
+        ledger.append({"event": "CREDIT"})
+        with path.open("a", encoding="utf-8") as handle:
+            handle.write("not-json\n")
         with self.assertRaises(LedgerIntegrityError):
             EventSourcedLedger(path).verify()
 

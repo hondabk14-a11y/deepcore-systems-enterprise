@@ -9,12 +9,11 @@ approved HSM/KMS or isolated signing environment and evidenced separately.
 from __future__ import annotations
 
 import pathlib
-import re
+import subprocess
 import sys
 
 ROOT = pathlib.Path(__file__).resolve().parents[1]
-FORBIDDEN_NAME = re.compile(r"(^|/)(\.env($|\.)|.*\.(pem|key|p12|pfx|jks)$|secrets/|credentials/|wallets/)", re.I)
-SECRET_VALUE = re.compile(r"(?i)(api[_-]?key|secret|private[_-]?key|password|token)\s*[:=]\s*['\"]?[A-Za-z0-9_./+\-=]{16,}")
+from tracked_secret_check import check_repository
 
 
 def main() -> int:
@@ -29,29 +28,10 @@ def main() -> int:
             if required not in text:
                 failures.append(f".gitignore does not explicitly cover {required}")
 
-    tracked = []
-    git_dir = ROOT / ".git"
-    if git_dir.exists():
-        import subprocess
-        result = subprocess.run(
-            ["git", "-C", str(ROOT), "ls-files"],
-            capture_output=True,
-            text=True,
-            check=False,
-        )
-        if result.returncode == 0:
-            tracked = result.stdout.splitlines()
-            for path in tracked:
-                if FORBIDDEN_NAME.search(path):
-                    failures.append(f"forbidden credential/key path tracked: {path}")
-                file_path = ROOT / path
-                if file_path.is_file():
-                    try:
-                        sample = file_path.read_text(encoding="utf-8", errors="ignore")
-                    except OSError:
-                        continue
-                    if SECRET_VALUE.search(sample):
-                        failures.append(f"possible embedded secret in tracked file: {path}")
+    try:
+        failures.extend(check_repository(ROOT))
+    except (OSError, ValueError, subprocess.CalledProcessError):
+        failures.append("tracked file inventory unavailable; custody check was not performed")
 
     print("KEY_CUSTODY_PREFLIGHT=" + ("PASS" if not failures else "FAIL"))
     print("SCOPE=repository custody-boundary preflight")

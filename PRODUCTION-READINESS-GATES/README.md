@@ -42,6 +42,6 @@ Never commit secrets, private keys, wallet seeds, credentials, production tokens
 
 ## Current classification
 
-**PRODUCTION-CANDIDATE / CI-VERIFIED CORE**
+**REFERENCE CORE / CI AND EXTERNAL EVIDENCE PENDING**
 
 This framework intentionally keeps unexecuted controls RED. Humans have apparently decided that changing a checkbox is easier than proving a distributed system works, so this repository does the opposite.

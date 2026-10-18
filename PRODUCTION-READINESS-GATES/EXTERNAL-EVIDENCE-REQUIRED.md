@@ -21,6 +21,6 @@ No repository commit can manufacture any of the above evidence. Synthetic tests 
 
 ## Current classification
 
-**PRODUCTION-CANDIDATE / CI-VERIFIED CORE**
+**REFERENCE CORE / CI AND EXTERNAL EVIDENCE PENDING**
 
 **PRODUCTION CERTIFICATION: NOT CERTIFIED**

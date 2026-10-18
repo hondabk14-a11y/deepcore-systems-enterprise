@@ -19,13 +19,13 @@ jobs:
     name: Production Gate
     runs-on: ubuntu-latest
     timeout-minutes: 15
-    env:
-      JOB_LOG_DIR: ${{ runner.temp }}/deepcore-job-logs
     steps:
       - name: Initialize job logs
         shell: bash
         run: |
           set -euo pipefail
+          JOB_LOG_DIR="$RUNNER_TEMP/deepcore-job-logs"
+          printf 'JOB_LOG_DIR=%s\n' "$JOB_LOG_DIR" >> "$GITHUB_ENV"
           mkdir -p "$JOB_LOG_DIR"
           printf 'repository=%s\ncommit=%s\nrun_id=%s\nattempt=%s\n' \
             "$GITHUB_REPOSITORY" "$GITHUB_SHA" "$GITHUB_RUN_ID" "$GITHUB_RUN_ATTEMPT" \
@@ -55,6 +55,13 @@ jobs:
           set -euo pipefail
           python -m unittest discover -s . -p 'test_*.py' -v 2>&1 | tee "$JOB_LOG_DIR/ledger-tests.log"
 
+      - name: Run SSIL and readiness regression tests
+        shell: bash
+        run: |
+          set -euo pipefail
+          python -m unittest discover -s SECURITY/SSIL -p 'test_ssil*.py' -v 2>&1 | tee "$JOB_LOG_DIR/ssil-tests.log"
+          python -m unittest discover -s PRODUCTION-READINESS-GATES -p 'test_*.py' -v 2>&1 | tee "$JOB_LOG_DIR/readiness-tests.log"
+
       - name: Verify ledger source compiles
         working-directory: CORE/event-sourced-ledger
         shell: bash
@@ -66,10 +73,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          if git ls-files | grep -E '(^|/)(\.env($|\.)|.*\.(pem|key|p12|pfx|jks)$|(^|/)(secrets|credentials|wallets)/)' ; then
-            echo 'Potential secret material is tracked in Git.'
-            exit 1
-          fi
+          python PRODUCTION-READINESS-GATES/tracked_secret_check.py
 
       - name: Verify repository hygiene
         shell: bash
@@ -108,6 +112,8 @@ jobs:
               "controls": {
                   "ledger_tests": "PASS",
                   "ledger_compile": "PASS",
+                  "ssil_tests": "PASS",
+                  "readiness_tests": "PASS",
                   "tracked_secret_paths": "PASS",
                   "repository_hygiene": "PASS",
               },
@@ -151,6 +157,7 @@ jobs:
           JOB_STATUS: ${{ job.status }}
         run: |
           set -euo pipefail
+          JOB_LOG_DIR="${JOB_LOG_DIR:-$RUNNER_TEMP/deepcore-job-logs}"
           mkdir -p "$JOB_LOG_DIR"
           printf 'job_status=%s\n' "$JOB_STATUS" > "$JOB_LOG_DIR/outcome.txt"
           cd "$JOB_LOG_DIR"

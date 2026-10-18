@@ -4,7 +4,7 @@ from __future__ import annotations
 import base64
 import json
 from dataclasses import dataclass
-from typing import Protocol
+from typing import Callable, Protocol
 
 from checkpoint import LedgerCheckpoint
 
@@ -57,10 +57,14 @@ class SignedCheckpoint:
         return base64.b64encode(self.signature).decode("ascii")
 
 
-def verify_signed_checkpoint(signed: SignedCheckpoint, *, key_resolver: CheckpointPublicKeyResolver, verifier: CheckpointSignatureVerifier) -> LedgerCheckpoint:
+def verify_signed_checkpoint(signed: SignedCheckpoint, *, key_resolver: CheckpointPublicKeyResolver | Callable[[str], bytes | None], verifier: CheckpointSignatureVerifier) -> LedgerCheckpoint:
     if not signed.ledger_id or not signed.key_id:
         raise SignatureVerificationError("signed checkpoint identity is incomplete")
-    public_key = key_resolver.resolve(signed.key_id)
+    try:
+        resolve = getattr(key_resolver, "resolve", None)
+        public_key = resolve(signed.key_id) if callable(resolve) else key_resolver(signed.key_id)
+    except Exception as exc:
+        raise SignatureVerificationError("authenticated key resolution failed") from exc
     if public_key is None:
         raise SignatureVerificationError(f"no authenticated public key for key_id {signed.key_id!r}")
     try:

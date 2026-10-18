@@ -34,7 +34,7 @@ def main() -> int:
     print()
     print("WORKFLOW HYGIENE: EVIDENCE PENDING; stale BuildFailed registration must be disabled/removed")
     print("PRODUCTION CERTIFICATION: NOT CERTIFIED")
-    print("CLASSIFICATION: PRODUCTION-CANDIDATE / CI-VERIFIED CORE")
+    print("CLASSIFICATION: REFERENCE CORE / EXTERNAL EVIDENCE PENDING")
     return 0
 
 
