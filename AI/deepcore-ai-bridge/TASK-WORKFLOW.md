@@ -18,9 +18,9 @@ Storage is process-local and lost on restart. History is ordered diagnostic stat
 
 Run from AI/deepcore-ai-bridge:
 
-    node --test test-task-workflow.mjs
+    node --test test-review-adapter.mjs test-task-workflow.mjs test-task-adapter-integration.mjs
 
-Six offline tests passed with a fake adapter on Node 24.19.0. No live AI provider or hosted CI pass is claimed. This standalone test command must be added to the integrated CI gate before release.
+Fifteen scoped offline tests passed on Node 24.19.0: five adapter tests, six lifecycle tests, and four integration tests using the real adapter with a fake Responses client. Tests cover content-bound approval, shared rate limiting, byte limits, and provider failure handling. No live AI provider or hosted CI pass is claimed. Both lifecycle suites are included in npm run local:test; the extension packaging workflow now invokes that shared command before packaging. The complete local:test suite was not rerun for this change.
 
 ## Remaining milestones
 
