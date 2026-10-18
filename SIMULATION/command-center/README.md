@@ -27,3 +27,7 @@ The dependency-free DOM harness checks module dialogs, scans, pause/resume, upda
 All telemetry, diagnostic outcomes and module capabilities are synthetic. This UI does not connect to the authoritative ledger, market observers, MCP bridge, quantum hardware or production services. Inspect 21 modules, export local event history, adjust the update interval, pause telemetry, or disable the energy pulse.
 
 This package adds a self-contained frontend without modifying existing ledger or security behavior. See ../../docs/DEEPCORE-CONSOLIDATION.md for the discovered work inventory and integration status.
+
+## Live Operations dashboard
+
+Open `live.html` for the screenshot-inspired node visualization, read-only telemetry API adapter, risk, consensus, liquidity, threat panels, and event filters. Run `python telemetry_server.py` from this directory and browse to `http://127.0.0.1:4174/live.html`. It starts with explicitly illustrative demo data; supply `DEEPCORE_TELEMETRY_URL` and optionally `DEEPCORE_UPSTREAM_TOKEN` for real data. See `LIVE-DASHBOARD.md` for the schema, safety boundary, and validation steps. No upstream service or GPU is provisioned by this change.
