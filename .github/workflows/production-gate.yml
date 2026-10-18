@@ -65,6 +65,9 @@ jobs:
       - name: Check for tracked secret files
         run: python PRODUCTION-READINESS-GATES/tracked_secret_check.py
 
+      - name: Verify tracked-secret detector regression tests
+        run: python -m unittest discover -s PRODUCTION-READINESS-GATES -p 'test_tracked_secret_check.py' -v
+
       - name: Verify repository hygiene
         shell: bash
         run: |
