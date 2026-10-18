@@ -2,35 +2,23 @@
 
 from __future__ import annotations
 
-import importlib.util
-from pathlib import Path
 
 import pytest
 
-ROOT = Path(__file__).resolve().parent
-
-
-def _load(name: str):
-    path = ROOT / name
-    spec = importlib.util.spec_from_file_location(name.removesuffix(".py"), path)
-    module = importlib.util.module_from_spec(spec)
-    assert spec.loader is not None
-    spec.loader.exec_module(module)
-    return module
-
-
-ledger_admission = _load("ledger_admission.py")
+import ledger_admission
+from coingecko_observation import canonical_hash
 
 
 class Request:
-    request_hash = "request-hash"
     policy_decision = "ALLOW"
     action = "market.execute"
     risk_assessment_hash = "risk-hash"
 
+    def __init__(self):
+        self.request_hash = canonical_hash(self.canonical_dict())
+
     def canonical_dict(self):
         return {
-            "request_hash": self.request_hash,
             "policy_decision": self.policy_decision,
             "action": self.action,
             "risk_assessment_hash": self.risk_assessment_hash,
@@ -39,7 +27,7 @@ class Request:
 
 class Validation:
     valid = True
-    request_hash = "request-hash"
+    request_hash = Request().request_hash
 
 
 def _admit(request=None, validation=None):
@@ -101,3 +89,13 @@ def test_admission_does_not_create_signature_or_private_key_material():
     assert result.admitted is True
     assert not hasattr(result, "signature")
     assert not hasattr(result, "private_key")
+
+
+
+def test_matching_but_incorrect_hashes_fail_integrity_check():
+    request = Request()
+    validation = Validation()
+    request.request_hash = validation.request_hash = "0" * 64
+    result = _admit(request, validation)
+    assert not result.admitted
+    assert result.reason == "request integrity check failed"
