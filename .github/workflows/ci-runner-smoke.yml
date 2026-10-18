@@ -1,0 +1,25 @@
+name: DeepCore Runner Startup Smoke
+
+on:
+  push:
+    branches:
+      - ci/runner-recovery-20261017
+    paths:
+      - .github/workflows/ci-runner-smoke.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  runner-smoke:
+    name: Verify GitHub-hosted runner dispatch
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - name: Confirm runner startup
+        shell: bash
+        run: |
+          set -euo pipefail
+          printf 'DEEPCORE_RUNNER_STARTUP_OK\n'
+          printf 'run_id=%s\nsha=%s\n' "$GITHUB_RUN_ID" "$GITHUB_SHA"
