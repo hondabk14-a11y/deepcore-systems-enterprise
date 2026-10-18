@@ -56,6 +56,7 @@ jobs:
       - name: Run market verification, risk, policy, and authorization verification
         run: >-
           python -m pytest -q
+          MARKET-DATA/test_ledger_admission.py
           MARKET-DATA/test_market_verification.py
           MARKET-DATA/test_market_risk.py
           MARKET-DATA/test_market_policy.py
