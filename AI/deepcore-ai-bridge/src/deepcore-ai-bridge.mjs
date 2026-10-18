@@ -5,6 +5,7 @@ import path from "node:path";
 import process from "node:process";
 import dotenv from "dotenv";
 import OpenAI from "openai";
+import { isLocalEndpoint } from "./local-endpoint.mjs";
 
 dotenv.config({ path: path.resolve(process.cwd(), ".env") });
 
@@ -16,7 +17,7 @@ if (!target) {
 
 const baseURL = process.env.DEEPCORE_AI_BASE_URL || "https://api.openai.com/v1";
 const normalizedBaseURL = baseURL.replace(/\/$/, "");
-const isLocal = /^(https?:\/\/)?(localhost|127\.0\.0\.1)(:\d+)?\/?$/i.test(baseURL);
+const isLocal = isLocalEndpoint(baseURL);
 const isOpenRouter = /(^|:\/\/)(www\.)?openrouter\.ai(\/|$)/i.test(baseURL);
 const apiKey = isOpenRouter
   ? process.env.OPENROUTER_API_KEY
