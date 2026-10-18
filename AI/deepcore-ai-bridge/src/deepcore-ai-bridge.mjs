@@ -3,9 +3,11 @@
 import fs from "node:fs/promises";
 import path from "node:path";
 import process from "node:process";
+import { fileURLToPath } from "node:url";
 import dotenv from "dotenv";
 import OpenAI from "openai";
 import { isLocalEndpoint } from "./local-endpoint.mjs";
+import { createReviewAdapter, ReviewError } from "./review-adapter.mjs";
 
 dotenv.config({ path: path.resolve(process.cwd(), ".env") });
 
@@ -15,23 +17,30 @@ if (!target) {
   process.exit(2);
 }
 
-const baseURL = process.env.DEEPCORE_AI_BASE_URL || "https://api.openai.com/v1";
-const normalizedBaseURL = baseURL.replace(/\/$/, "");
+const baseURL = (process.env.DEEPCORE_AI_BASE_URL || "https://api.openai.com/v1").replace(/\/+$/, "");
+let endpoint;
+try {
+  endpoint = new URL(baseURL);
+} catch {
+  console.error("AI REVIEW FAIL [CONFIGURATION]: Invalid AI endpoint.");
+  process.exit(2);
+}
 const isLocal = isLocalEndpoint(baseURL);
-const isOpenRouter = /(^|:\/\/)(www\.)?openrouter\.ai(\/|$)/i.test(baseURL);
+const isOpenRouter = endpoint.origin === "https://openrouter.ai" && endpoint.pathname.startsWith("/api/v1");
+const isOfficial = endpoint.origin === "https://api.openai.com" && endpoint.pathname.startsWith("/v1");
+if (!isLocal && !isOpenRouter && !isOfficial) {
+  console.error("AI REVIEW FAIL [CONFIGURATION]: Unapproved AI endpoint. Use OpenAI, OpenRouter, or loopback inference.");
+  process.exit(2);
+}
 const apiKey = isOpenRouter
   ? process.env.OPENROUTER_API_KEY
-  : process.env.OPENAI_API_KEY || (isLocal ? "deepcore-local" : "");
-
+  : isLocal ? (process.env.DEEPCORE_LOCAL_AI_API_KEY || "deepcore-local") : process.env.OPENAI_API_KEY;
 if (!apiKey) {
-  console.error(`${isOpenRouter ? "OPENROUTER_API_KEY" : "OPENAI_API_KEY"} is not set. Create a local .env from .env.example.`);
+  console.error((isOpenRouter ? "OPENROUTER_API_KEY" : "OPENAI_API_KEY") + " is not configured in the server-side environment.");
   process.exit(2);
 }
 
 const model = process.env.DEEPCORE_AI_MODEL || "gpt-6-astra";
-const absoluteTarget = path.resolve(process.cwd(), target);
-const source = await fs.readFile(absoluteTarget, "utf8");
-
 const defaultHeaders = isOpenRouter
   ? {
       "HTTP-Referer": process.env.OPENROUTER_HTTP_REFERER || "https://github.com/hondabk14-a11y/deepcore-systems-enterprise",
@@ -43,6 +52,8 @@ const client = new OpenAI({
   apiKey,
   baseURL: normalizedBaseURL,
   defaultHeaders,
+  timeout: 30_000,
+  maxRetries: 0,
 });
 
 const instructions = `You are the DeepCore Systems Enterprise engineering reviewer.
@@ -59,10 +70,28 @@ Repository rules:
 Review the supplied source for correctness, security, determinism, failure handling, and tests.
 Do not modify files. Return findings with severity, evidence, and concrete remediation steps.`;
 
-const response = await client.responses.create({
-  model,
-  instructions,
-  input: `Review this file: ${target}\n\n--- SOURCE ---\n${source}\n--- END SOURCE ---`,
-});
-
-console.log(response.output_text);
+try {
+  const repositoryRoot = await fs.realpath(path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../../.."));
+  const sourcePath = await fs.realpath(path.resolve(process.cwd(), target));
+  const relative = path.relative(repositoryRoot, sourcePath).replaceAll(path.sep, "/");
+  if (!relative || relative === ".." || relative.startsWith("../") || path.isAbsolute(relative)) {
+    throw new ReviewError("FILE_POLICY", "Review target must be a repository file.");
+  }
+  const components = relative.split("/");
+  if (components.some((component) => /^(secrets?|credentials?|wallets?|\.ssh)$/i.test(component)) ||
+      /^(\.env(?:\.|$)|id_rsa$|id_ed25519$)/i.test(components.at(-1)) ||
+      /\.(pem|key|p12|pfx|jks)$/i.test(relative)) {
+    throw new ReviewError("FILE_POLICY", "Sensitive paths cannot be sent for AI review.");
+  }
+  const stat = await fs.stat(sourcePath);
+  if (!stat.isFile() || stat.size > 128 * 1024) {
+    throw new ReviewError("INPUT_TOO_LARGE", "Review target must be a regular file of at most 128 KiB.");
+  }
+  const source = await fs.readFile(sourcePath, "utf8");
+  const adapter = createReviewAdapter({ client, model });
+  console.log(await adapter.review({ fileName: relative, source, instructions }));
+} catch (error) {
+  const safeError = error instanceof ReviewError ? error : new ReviewError("REVIEW_FAILED", "Unable to load source or complete AI review.");
+  console.error("AI REVIEW FAIL [" + safeError.code + "]: " + safeError.message);
+  process.exitCode = 1;
+}
