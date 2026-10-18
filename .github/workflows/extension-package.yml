@@ -45,7 +45,7 @@ jobs:
         run: |
           node --check ../src/deepcore-ai-bridge.mjs
           node --check ../local-inference-health-check.mjs
-          node --test ../test-local-endpoint.mjs ../test-local-inference-health-check.mjs ../test-healthcheck-integration.mjs ../test-review-adapter.mjs
+          npm --prefix .. run local:test
 
       - name: Verify extension argument handling
         run: npm test

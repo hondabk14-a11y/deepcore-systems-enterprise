@@ -6,7 +6,7 @@
   "scripts": {
     "review": "node src/deepcore-ai-bridge.mjs",
     "local:health": "node local-inference-health-check.mjs",
-    "local:test": "node --test test-local-inference-health-check.mjs test-healthcheck-integration.mjs test-local-endpoint.mjs test-review-adapter.mjs"
+    "local:test": "node --test test-local-inference-health-check.mjs test-healthcheck-integration.mjs test-local-endpoint.mjs test-review-adapter.mjs test-task-workflow.mjs test-task-adapter-integration.mjs test-task-persistence.mjs"
   },
   "dependencies": {
     "dotenv": "^16.4.7",
