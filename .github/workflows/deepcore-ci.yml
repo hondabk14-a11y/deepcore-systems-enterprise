@@ -30,7 +30,7 @@ jobs:
         run: python -m pip install --upgrade -r requirements.txt
 
       - name: Execute reference runtime
-        run: python CORE/deepcore_runtime.py
+        run: python -m CORE.deepcore_runtime
 
       - name: Run DeepCore and UST verification suite
         run: >-
@@ -56,6 +56,7 @@ jobs:
       - name: Run market verification, risk, policy, and authorization verification
         run: >-
           python -m pytest -q
+          MARKET-DATA/test_ledger_admission.py
           MARKET-DATA/test_market_verification.py
           MARKET-DATA/test_market_risk.py
           MARKET-DATA/test_market_policy.py

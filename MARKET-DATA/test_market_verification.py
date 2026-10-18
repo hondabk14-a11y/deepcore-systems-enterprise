@@ -2,26 +2,13 @@
 
 from __future__ import annotations
 
-import importlib.util
-from pathlib import Path
 
 import pytest
 
 
-ROOT = Path(__file__).resolve().parent
-
-
-def _load(name: str, filename: str):
-    spec = importlib.util.spec_from_file_location(name, ROOT / filename)
-    module = importlib.util.module_from_spec(spec)
-    assert spec.loader is not None
-    spec.loader.exec_module(module)
-    return module
-
-
-observation_module = _load("coingecko_observation", "coingecko_observation.py")
-event_module = _load("market_price_event", "market_price_event.py")
-verification_module = _load("market_verification", "market_verification.py")
+import coingecko_observation as observation_module
+import market_price_event as event_module
+import market_verification as verification_module
 
 
 build_observation = observation_module.build_observation
@@ -38,20 +25,24 @@ def _event(provider: str, price: str):
         currency="usd",
         retrieved_at="2026-09-14T00:00:00+00:00",
     )
-    # Keep the canonical event boundary while allowing the test to model an
-    # independent provider observation without granting it any authority.
-    if provider != "coingecko":
-        observation = observation.__class__(
-            provider=provider,
-            coingecko_id=observation.coingecko_id,
-            symbol=observation.symbol,
-            name=observation.name,
-            price=observation.price,
-            currency=observation.currency,
-            retrieved_at=observation.retrieved_at,
-            provenance_hash=observation.provenance_hash,
-        )
-    return build_market_price_event(observation)
+    if provider == "coingecko":
+        return build_market_price_event(observation)
+    # Synthetic independent-provider event, not a live provider integration.
+    source = {**observation.canonical_dict(), "provider": provider}
+    payload = dict(event_type="market.price", provider=provider,
+                   asset_id="bitcoin", symbol="btc", price=price, currency="usd",
+                   observed_at=observation.retrieved_at,
+                   provenance_hash=observation_module.canonical_hash(source))
+    return event_module.MarketPriceEvent(
+        **payload, event_hash=observation_module.canonical_hash(payload))
+
+
+def test_coingecko_adapter_rejects_other_provider():
+    from dataclasses import replace
+    observation = build_observation(coingecko_id="bitcoin", symbol="btc",
+                                    name="Bitcoin", price="100", currency="usd")
+    with pytest.raises(ValueError, match="requires a CoinGecko observation"):
+        build_market_price_event(replace(observation, provider="arkham"))
 
 
 def test_matching_independent_observations_are_verified() -> None:
@@ -90,7 +81,7 @@ def test_mismatched_currency_is_rejected() -> None:
 
 def test_invalid_price_is_rejected() -> None:
     first = _event("coingecko", "100000")
-    second = second = first.__class__(**{**first.__dict__, "provider": "arkham", "price": "NaN"})
+    second = first.__class__(**{**first.__dict__, "provider": "arkham", "price": "NaN"})
     with pytest.raises(ValueError, match="finite non-negative decimal"):
         verify_market_prices(first, second)
 
@@ -102,3 +93,4 @@ def test_result_hash_is_deterministic_and_source_hashes_are_preserved() -> None:
     b = verify_market_prices(first, second)
     assert a.result_hash == b.result_hash
     assert a.source_event_hashes == (first.event_hash, second.event_hash)
+

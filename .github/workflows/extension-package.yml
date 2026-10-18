@@ -4,7 +4,12 @@ on:
   workflow_dispatch:
   push:
     paths:
-      - 'AI/deepcore-ai-bridge/vscode-extension/**'
+      - 'AI/deepcore-ai-bridge/**'
+      - '.github/workflows/extension-package.yml'
+  pull_request:
+    paths:
+      - 'AI/deepcore-ai-bridge/**'
+      - '.github/workflows/extension-package.yml'
 
 permissions:
   contents: read
@@ -35,6 +40,15 @@ jobs:
 
       - name: Validate extension entrypoint
         run: node --check extension.js
+
+      - name: Validate bridge entrypoint and endpoint classification
+        run: |
+          node --check ../src/deepcore-ai-bridge.mjs
+          node --check ../local-inference-health-check.mjs
+          node --test ../test-local-endpoint.mjs ../test-local-inference-health-check.mjs ../test-healthcheck-integration.mjs
+
+      - name: Verify extension argument handling
+        run: npm test
 
       - name: Package VSIX
         run: npm run package
