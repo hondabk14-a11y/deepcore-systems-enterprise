@@ -50,5 +50,8 @@ jobs:
       - name: Tracked secret-path check
         run: python PRODUCTION-READINESS-GATES/tracked_secret_check.py
 
+      - name: Verify tracked-secret checker regressions
+        run: python -m unittest discover -s PRODUCTION-READINESS-GATES -p 'test_tracked_secret_check.py' -v
+
       - name: CodeQL analysis
         uses: github/codeql-action/analyze@v3
