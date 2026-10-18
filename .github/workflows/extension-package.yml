@@ -44,7 +44,8 @@ jobs:
       - name: Validate bridge entrypoint and endpoint classification
         run: |
           node --check ../src/deepcore-ai-bridge.mjs
-          node --test ../test-local-endpoint.mjs
+          node --check ../local-inference-health-check.mjs
+          node --test ../test-local-endpoint.mjs ../test-local-inference-health-check.mjs ../test-healthcheck-integration.mjs
 
       - name: Verify extension argument handling
         run: npm test
