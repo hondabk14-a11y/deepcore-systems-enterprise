@@ -24,7 +24,7 @@ export DEEPCORE_TELEMETRY_URL='http://127.0.0.1:9000/telemetry/snapshot'
 python telemetry_server.py
 ```
 
-Open the dashboard and switch **DATA SOURCE → Live API**. The server does a bounded GET, validates the payload, and returns it from `/api/telemetry`. If it is missing, malformed, unavailable, or more than two minutes stale, the UI shows an error or stale state; it never swaps in fake green operational metrics. Polling can be set to 5, 15, 30, or 60 seconds; refresh, pause, node selection, search, severity filtering, time-range filtering, and JSON event export work locally. The graph is a **sampled visualization** of up to 150 upstream nodes, not a claim to render every node in a very large network.
+Open the dashboard and switch **DATA SOURCE → Live API**. The server does a bounded GET, validates the payload, and returns it from `/api/telemetry`. If it is missing, malformed, unavailable, or more than two minutes stale, the UI shows an error or stale state; it never swaps in fake green operational metrics. Polling can be set to 5, 15, 30, or 60 seconds; refresh, pause, node selection, search, severity filtering, time-range filtering, and JSON event export work locally. The graph is a **sampled visualization** of up to 150 upstream nodes, not a claim to render every node in a very large network. The risk sparkline and consensus waveform are decorative visuals, not independently measured historical time series; their displayed scalar metrics come from the source.
 
 The expected JSON includes UTC timestamp with timezone, `metrics`, `consensus`, `nodes`, `flows`, `events`, `liquidity`, and `distribution`:
 
@@ -50,6 +50,7 @@ The expected JSON includes UTC timestamp with timezone, `metrics`, `consensus`, 
 ```bash
 python -m unittest discover -s . -p 'test_live.py' -v
 node --check live.js
+node test_live_dom.cjs
 ```
 
 Browser rendering and live production instrumentation must be tested independently. This module has no dependencies on real custodied funds, wallets, signing keys, or authoritative consensus state.
