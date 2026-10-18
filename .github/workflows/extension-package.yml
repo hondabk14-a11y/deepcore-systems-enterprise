@@ -4,7 +4,12 @@ on:
   workflow_dispatch:
   push:
     paths:
-      - 'AI/deepcore-ai-bridge/vscode-extension/**'
+      - 'AI/deepcore-ai-bridge/**'
+      - '.github/workflows/extension-package.yml'
+  pull_request:
+    paths:
+      - 'AI/deepcore-ai-bridge/**'
+      - '.github/workflows/extension-package.yml'
 
 permissions:
   contents: read
