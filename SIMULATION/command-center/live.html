@@ -1,0 +1,64 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="theme-color" content="#020817"><title>DeepCore | Live Operations</title>
+  <link rel="stylesheet" href="live.css">
+  <script src="live.js" defer></script>
+</head>
+<body>
+  <header class="topbar">
+    <a class="identity" href="./index.html" aria-label="DeepCore original command center"><span class="hex">⬡</span><span><strong>DEEPCORE</strong><small>LIVE OPERATIONS CENTER</small></span></a>
+    <div class="head-metrics">
+      <div class="head-metric clockbox"><span>SYSTEM TIME</span><b id="clock">--:--:-- UTC</b></div>
+      <div class="head-metric"><span>TOTAL NODES</span><b id="totalNodes">--</b></div>
+      <div class="head-metric"><span>VALUE LOCKED</span><b id="valueLocked">--</b></div>
+      <div class="head-metric"><span>SYSTEM HEALTH</span><b id="health">--</b></div>
+      <div class="head-metric"><span>ENERGY FLOW</span><b id="energy">--</b></div>
+    </div>
+    <div class="connection-badge" id="connectionBadge" data-state="demo"><span class="pulse"></span><b id="connectionText">DEMO</b><small id="lastUpdate">Illustrative data</small></div>
+  </header>
+  <div class="layout">
+    <aside class="sidebar" aria-label="Dashboard navigation">
+      <div class="nav-title">CONTROL MODULES</div>
+      <nav id="nav">
+        <button type="button" class="active" data-view="overview"><span>◈</span> Overview</button>
+        <button type="button" data-view="system"><span>⬡</span> System map</button>
+        <button type="button" data-view="energy"><span>↝</span> Energy flow</button>
+        <button type="button" data-view="risk"><span>◇</span> Risk field</button>
+        <button type="button" data-view="consensus"><span>▥</span> Consensus</button>
+        <button type="button" data-view="liquidity"><span>◉</span> Liquidity</button>
+        <button type="button" data-view="adversarial"><span>⌁</span> Adversarial</button>
+        <button type="button" data-view="nodes"><span>✧</span> Nodes</button>
+        <button type="button" data-view="analytics"><span>▤</span> Analytics</button>
+        <button type="button" data-view="settings"><span>⚙</span> Settings</button>
+      </nav>
+      <div class="side-footer"><span class="dot"></span> READ-ONLY OBSERVABILITY<br><small>Actions never write to ledger or consensus.</small></div>
+    </aside>
+    <main>
+      <div class="main-heading"><div><span class="eyebrow">DISTRIBUTED INTELLIGENCE / <span id="viewPath">OVERVIEW</span></span><h1 id="viewTitle">Network command overview</h1></div><div class="toolbar"><label for="source">DATA SOURCE</label><select id="source"><option value="demo">Illustrative demo</option><option value="live">Live API</option></select><button id="refresh" type="button" title="Refresh live telemetry">↻ Refresh</button><button id="pause" type="button" aria-pressed="false">Ⅱ Pause</button></div></div>
+      <div class="notice" id="notice" role="status">ILLUSTRATIVE VIEW · This screenshot-inspired demonstration is not connected to real systems.</div>
+      <div class="hero-grid">
+        <section class="panel network-panel" aria-labelledby="networkTitle">
+          <div class="panel-head"><div><span class="eyebrow">DECENTRALIZED INFRASTRUCTURE</span><h2 id="networkTitle">Quantum intelligence mesh</h2></div><div class="head-actions"><span class="legend-dot"></span><span id="networkLabel">SAMPLE NETWORK</span></div></div>
+          <div class="network-stage"><svg id="mesh" viewBox="0 0 900 510" role="img" aria-label="Interactive network topology showing nodes and connections"><defs><radialGradient id="ambient"><stop stop-color="#07305a"/><stop offset=".64" stop-color="#08132d" stop-opacity=".25"/><stop offset="1" stop-color="#010714" stop-opacity="0"/></radialGradient><filter id="glow"><feGaussianBlur stdDeviation="6" result="blur"/><feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge></filter></defs><rect width="900" height="510" fill="url(#ambient)"/><g id="meshLinks"></g><g id="meshNodes"></g></svg><div class="mesh-controls"><label for="nodeSearch">FIND NODE</label><input id="nodeSearch" autocomplete="off" placeholder="Search node ID…"><select id="timeWindow" aria-label="Event history time window"><option value="live">Current</option><option value="1h">1 hour</option><option value="24h">24 hours</option></select></div></div>
+          <div class="node-inspector"><div><span class="eyebrow">SELECTED NODE</span><strong id="selectedNode">N-001 · CORE</strong></div><div><span class="eyebrow">HEALTH</span><strong id="selectedHealth">--</strong></div><div><span class="eyebrow">RISK</span><strong id="selectedRisk">--</strong></div><div><span class="eyebrow">ROLE</span><strong id="selectedRole">--</strong></div></div>
+        </section>
+        <div class="right-stack">
+          <section class="panel smallpanel" id="riskPanel"><div class="panel-head"><h2>RISK FIELD OVERLAY</h2><span class="pill pink">MONITOR</span></div><div class="large-risk"><div><small>SYSTEM RISK INDEX</small><b id="risk">--</b></div><span id="riskLabel">--</span></div><svg class="spark" viewBox="0 0 340 100" aria-hidden="true"><defs><linearGradient id="riskGrad" x1="0" x2="0" y1="0" y2="1"><stop stop-color="#fc4365" stop-opacity=".6"/><stop offset="1" stop-color="#ef3860" stop-opacity="0"/></linearGradient></defs><path id="riskArea" fill="url(#riskGrad)"></path><path id="riskLine" stroke="#ff5374" stroke-width="2" fill="none"></path></svg><div class="axis"><span>0.0</span><span>RISK EXPOSURE</span><span>1.0</span></div></section>
+          <section class="panel smallpanel" id="consensusPanel"><div class="panel-head"><h2>CONSENSUS TIMELINE</h2><span class="pill cyan">HOTSTUFF</span></div><small>ROUND</small><div class="line-metric"><b id="round">--</b><span id="consensusStatus">--</span></div><svg class="wave" id="consensusWave" viewBox="0 0 340 65" aria-hidden="true"></svg><div class="progress-top"><span>ROUND PROGRESS</span><b id="roundProgress">--</b></div><div class="progress"><div id="progressBar"></div></div></section>
+          <section class="panel smallpanel" id="liquidityPanel"><div class="panel-head"><h2>LIQUIDITY FLOW</h2><span class="pill cyan">READ ONLY</span></div><small>TOTAL FLOW (24H)</small><div class="line-metric"><b id="flow24">--</b></div><div id="liquidityBars" class="liquidity-bars"></div></section>
+        </div>
+      </div>
+      <div class="bottom-grid">
+        <section class="panel"><div class="panel-head"><h2>SYSTEM METRICS</h2><span class="pill cyan">OBSERVABILITY</span></div><div class="meter-grid"><div class="health-ring" id="healthRing"><b id="healthRingValue">--</b><small>HEALTH</small></div><div class="metric-list"><div><span>NETWORK HEALTH</span><b id="healthMetric">--</b></div><div><span>THREATS</span><b id="threatCount">--</b></div><div><span>BLOCK HEIGHT</span><b id="blockHeight">--</b></div></div></div></section>
+        <section class="panel"><div class="panel-head"><h2>TOP NODES BY ENERGY</h2><span class="pill cyan">RANKED</span></div><div id="topNodes" class="ranking"></div></section>
+        <section class="panel"><div class="panel-head"><h2>ENERGY DISTRIBUTION</h2><span class="pill cyan">TOTAL</span></div><div class="energy-graphic"><div class="donut" id="donut"><span id="donutCenter">--</span></div><div id="energyLegend" class="energy-legend"></div></div></section>
+        <section class="panel"><div class="panel-head"><h2>ADVERSARIAL HEAT LENS</h2><span class="pill pink">SECURITY</span></div><div class="threat-display"><div><small>ACTIVE THREATS</small><b id="threatLarge">--</b><span id="threatDescription">No source</span></div><svg viewBox="0 0 180 120" aria-hidden="true"><circle cx="98" cy="57" r="47" fill="#521222" fill-opacity=".3" stroke="#e83b63" stroke-dasharray="3 8"/><circle cx="98" cy="57" r="29" fill="none" stroke="#ee5561"/><circle cx="98" cy="57" r="11" fill="#f7535c" opacity=".7"/><path d="M20 35 L160 90 M35 95 L155 25" stroke="#f95360" opacity=".4"/></svg></div></section>
+      </div>
+      <div class="event-row"><section class="panel"><div class="panel-head"><div><h2>EVENT STREAM</h2><small id="eventContext">Example records, not actual settlements</small></div><div class="head-actions"><label for="eventFilter">FILTER</label><select id="eventFilter"><option value="ALL">All events</option><option value="RISK">Risk</option><option value="CONSENSUS">Consensus</option><option value="SETTLEMENT">Settlement</option><option value="SECURITY">Security</option></select><button id="export" type="button">Export JSON</button></div></div><div id="events" class="events" role="log" aria-label="Read-only network events"></div></section><section class="panel settings-panel" id="settingsPanel"><div class="panel-head"><h2>CONNECTION SETTINGS</h2><span class="pill cyan">LOCAL</span></div><label for="interval">Polling interval</label><select id="interval"><option value="5000">5 seconds</option><option value="15000" selected>15 seconds</option><option value="30000">30 seconds</option><option value="60000">60 seconds</option></select><label class="checkbox"><input id="animations" type="checkbox" checked> Enable visual motion</label><p>Live mode reads <code>/api/telemetry</code> from a local, read-only backend. There are no ledger writes, order actions, or wallet operations.</p></section></div>
+      <footer>DEEPCORE SYSTEMS ENTERPRISE · VISUAL REFERENCE IMPLEMENTATION · <a href="./index.html">ORIGINAL SIMULATOR</a></footer>
+    </main>
+  </div>
+</body>
+</html>
