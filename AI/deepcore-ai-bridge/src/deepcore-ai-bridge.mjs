@@ -50,7 +50,7 @@ const defaultHeaders = isOpenRouter
 
 const client = new OpenAI({
   apiKey,
-  baseURL: normalizedBaseURL,
+  baseURL,
   defaultHeaders,
   timeout: 30_000,
   maxRetries: 0,
