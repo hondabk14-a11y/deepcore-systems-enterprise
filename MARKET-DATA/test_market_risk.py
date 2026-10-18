@@ -2,25 +2,12 @@
 
 from __future__ import annotations
 
-import importlib.util
-from pathlib import Path
 
 
-ROOT = Path(__file__).resolve().parent
-
-
-def _load(name: str, filename: str):
-    spec = importlib.util.spec_from_file_location(name, ROOT / filename)
-    module = importlib.util.module_from_spec(spec)
-    assert spec.loader is not None
-    spec.loader.exec_module(module)
-    return module
-
-
-risk_module = _load("market_risk", "market_risk.py")
-verification_module = _load("market_verification", "market_verification.py")
-observation_module = _load("coingecko_observation", "coingecko_observation.py")
-event_module = _load("market_price_event", "market_price_event.py")
+import market_risk as risk_module
+import market_verification as verification_module
+import coingecko_observation as observation_module
+import market_price_event as event_module
 
 
 def _verification(status: str, difference: str):
@@ -69,3 +56,4 @@ def test_assessment_hash_is_deterministic() -> None:
     first = risk_module.assess_market_risk(_verification("DISCREPANCY", "0.20"))
     second = risk_module.assess_market_risk(_verification("DISCREPANCY", "0.20"))
     assert first.assessment_hash == second.assessment_hash
+
