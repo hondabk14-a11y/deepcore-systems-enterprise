@@ -36,6 +36,14 @@ jobs:
       - name: Validate extension entrypoint
         run: node --check extension.js
 
+      - name: Validate bridge entrypoint and endpoint classification
+        run: |
+          node --check ../src/deepcore-ai-bridge.mjs
+          node --test ../test-local-endpoint.mjs
+
+      - name: Verify extension argument handling
+        run: npm test
+
       - name: Package VSIX
         run: npm run package
 
