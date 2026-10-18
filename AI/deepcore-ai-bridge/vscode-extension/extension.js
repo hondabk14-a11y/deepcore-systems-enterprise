@@ -20,10 +20,14 @@ function findBridgeScript() {
 }
 
 function activate(context) {
-  const command = vscode.commands.registerCommand('deepcore.reviewFile', () => {
+  const command = vscode.commands.registerCommand('deepcore.reviewFile', async () => {
     const editor = vscode.window.activeTextEditor;
     if (!editor) {
       vscode.window.showWarningMessage('DeepCore: open a file before starting a review.');
+      return;
+    }
+    if (editor.document.uri.scheme !== 'file') {
+      vscode.window.showWarningMessage('DeepCore: save the file locally before starting a review.');
       return;
     }
 
@@ -36,9 +40,21 @@ function activate(context) {
     }
 
     const filePath = editor.document.uri.fsPath;
-    const terminal = vscode.window.createTerminal({ name: 'DeepCore AI Review' });
-    terminal.show(true);
-    terminal.sendText(`node ${JSON.stringify(script)} review ${JSON.stringify(filePath)}`);
+    const bridgeRoot = path.dirname(path.dirname(script));
+    const task = new vscode.Task(
+      { type: 'deepcore-review', file: filePath },
+      vscode.TaskScope.Workspace,
+      'DeepCore AI Review',
+      'deepcore',
+      new vscode.ProcessExecution('node', [script, filePath], { cwd: bridgeRoot })
+    );
+    try {
+      await vscode.tasks.executeTask(task);
+    } catch (error) {
+      vscode.window.showErrorMessage(
+        'DeepCore: unable to start review: ' + (error instanceof Error ? error.message : String(error))
+      );
+    }
   });
 
   context.subscriptions.push(command);
