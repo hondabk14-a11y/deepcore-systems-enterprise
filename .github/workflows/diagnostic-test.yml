@@ -6,6 +6,10 @@ on:
     branches: [main]
     paths:
       - '.github/workflows/diagnostic-test.yml'
+  pull_request:
+    branches: [main]
+    paths:
+      - '.github/workflows/diagnostic-test.yml'
 
 permissions:
   contents: read
@@ -14,13 +18,13 @@ jobs:
   diagnostic-startup:
     name: Diagnostic Startup Verification
     runs-on: ubuntu-latest
+    timeout-minutes: 5
     steps:
       - name: Verify runner is available
         run: |
-          echo "✓ Runner job successfully created"
-          echo "✓ GitHub Actions execution layer is operational"
-          echo "GitHub Run ID: ${{ github.run_id }}"
-          echo "Workflow: ${{ github.workflow }}"
+          echo "Runner job successfully created"
+          echo "GitHub Run ID: $GITHUB_RUN_ID"
+          echo "Workflow: $GITHUB_WORKFLOW"
 
       - name: Check Python availability
         run: |
@@ -31,31 +35,37 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Verify repository structure
+        shell: bash
         run: |
-          echo "Repository contents:"
-          ls -la
-          echo ""
-          echo "Checking critical DeepCore directories:"
-          test -d CORE && echo "✓ CORE directory present" || echo "✗ CORE directory missing"
-          test -d ARCHITECTURE && echo "✓ ARCHITECTURE directory present" || echo "✗ ARCHITECTURE directory missing"
-          test -d SECURITY && echo "✓ SECURITY directory present" || echo "✗ SECURITY directory missing"
-          test -f README.md && echo "✓ README.md present" || echo "✗ README.md missing"
+          set -euo pipefail
+          missing=0
+          for dir in CORE ARCHITECTURE SECURITY; do
+            if [[ -d "$dir" ]]; then
+              printf 'PASS directory: %s\n' "$dir"
+            else
+              printf 'FAIL missing directory: %s\n' "$dir" >&2
+              missing=$((missing + 1))
+            fi
+          done
+          for file in README.md; do
+            if [[ -f "$file" ]]; then
+              printf 'PASS file: %s\n' "$file"
+            else
+              printf 'FAIL missing file: %s\n' "$file" >&2
+              missing=$((missing + 1))
+            fi
+          done
+          if (( missing > 0 )); then
+            printf 'Repository structure check failed: %d missing path(s)\n' "$missing" >&2
+            exit 1
+          fi
 
       - name: Diagnostic summary
         run: |
-          echo "=========================================="
-          echo "DeepCore Diagnostic Test: PASSED"
-          echo "=========================================="
-          echo ""
-          echo "✓ Workflow job successfully created"
-          echo "✓ Runner is available and responsive"
-          echo "✓ GitHub Actions execution layer is operational"
-          echo "✓ Repository code is accessible"
-          echo "✓ Python runtime is available"
-          echo ""
+          echo "DeepCore diagnostic PASSED: runner, Python, checkout and required paths verified."
+          echo "This does not certify the production gate or any other workflow."
           echo "NEXT STEPS:"
-          echo "1. Remove/disable the stale BuildFailed workflow (ID: 350815380)"
-          echo "2. Once removed, trigger the production-gate workflow"
-          echo "3. Execute readiness-preflight for full validation"
-          echo ""
-          echo "=========================================="
+          echo "1. If other runs still show BuildFailed/startup_failure with zero jobs, check GitHub billing and Actions policy."
+          echo "2. Escalate unresolved pre-job failures to GitHub Support; do not delete workflow records on assumption."
+          echo "3. Run production-gate, security-gate, DeepCore CI and readiness-preflight."
+          echo "4. Require actual passed jobs and recorded artifacts before considering the repository gate verified."
