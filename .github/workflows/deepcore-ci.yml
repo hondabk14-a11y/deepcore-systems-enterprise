@@ -37,6 +37,7 @@ jobs:
           python -m pytest -q
           tests/test_deepcore_runtime.py
           tests/test_deepcore_crypto.py
+          tests/test_bitcoin_public_key_inspector.py
           tests/test_deepcore_consensus.py
           tests/test_deepcore_hotstuff.py
           tests/test_deepcore_transport.py
