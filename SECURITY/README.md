@@ -15,3 +15,6 @@ Ed25519 and ECDSA are used according to component requirements. Hardware-bound i
 PQC migration is treated as an architectural readiness requirement, with hybrid/transition strategies to be validated against deployment constraints.
 
 Never store private keys, credentials, seeds, API tokens, or production secrets in this repository.
+## Operator OpenPGP artifacts
+
+See [OpenPGP operator artifact security](OPENPGP.md) for pinned-key verification, Termux setup, detached signatures, and optional file encryption. This adapter is not a production trust anchor or ledger authorization path.
