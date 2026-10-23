@@ -1,0 +1,53 @@
+name: Simulation Deployment Verification
+
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - 'SIMULATION/local_server.py'
+      - 'SIMULATION/test_local_server.py'
+      - 'CORE/**'
+      - 'deploy/simulation/**'
+      - '.github/workflows/simulation-verification.yml'
+  push:
+    branches: [main, 'feat/bkillings-simulation-jobs']
+    paths:
+      - 'SIMULATION/local_server.py'
+      - 'SIMULATION/test_local_server.py'
+      - 'CORE/**'
+      - 'deploy/simulation/**'
+      - '.github/workflows/simulation-verification.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  simulation:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      COMPOSE_PROJECT_NAME: deepcore-ci-${{ github.run_id }}-${{ github.run_attempt }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install simulation dependency
+        run: python -m pip install -r deploy/simulation/requirements.txt
+      - name: Verify simulation behavior
+        run: python -m unittest SIMULATION.test_local_server -v
+      - name: Validate Compose configuration
+        run: docker compose -f deploy/simulation/compose.yaml config --quiet
+      - name: Build and start simulation container
+        run: docker compose -f deploy/simulation/compose.yaml up --build -d
+      - name: Verify HTTP behavior and restart recovery
+        run: python deploy/simulation/smoke_check.py
+      - name: Capture container status
+        if: always()
+        run: docker compose -f deploy/simulation/compose.yaml ps
+      - name: Capture service logs
+        if: always()
+        run: docker compose -f deploy/simulation/compose.yaml logs --no-color --tail=100
+      - name: Remove CI simulation resources
+        if: always()
+        run: docker compose -f deploy/simulation/compose.yaml down --volumes
