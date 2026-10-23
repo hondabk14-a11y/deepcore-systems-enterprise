@@ -7,6 +7,7 @@ import re
 import sqlite3
 import time
 from decimal import Decimal
+from pathlib import Path
 from urllib.request import Request, urlopen
 
 from CORE.deepcore_runtime import canonical, sha256_obj, ZERO_HASH
@@ -75,7 +76,14 @@ class ObservationJournal:
     against wholesale journal replacement. Anchor the head independently for that.
     """
 
-    def __init__(self, path: str):
+    def __init__(self, path: str, *, read_only: bool = False):
+        if read_only:
+            # URI encoding prevents '?' or '#' in filenames becoming options.
+            # mode=ro fails if missing and never initializes schema or WAL mode.
+            self.db = sqlite3.connect(
+                Path(path).absolute().as_uri() + "?mode=ro",
+                uri=True, isolation_level=None)
+            return
         self.db = sqlite3.connect(path, isolation_level=None)
         self.db.execute("PRAGMA journal_mode=WAL")
         self.db.execute("PRAGMA synchronous=FULL")
