@@ -294,37 +294,66 @@ def main() -> None:
     from CORE.deepcore_crypto import Ed25519Identity
     from CORE.deepcore_key_registry import ValidatorKeyRegistry
     from CORE.deepcore_consensus import SignedQuorumCertificate
+    from CORE.deepcore_telemetry import (
+        initialize_telemetry,
+        shutdown_telemetry,
+        start_span,
+        telemetry_status,
+    )
 
-    validators = ["validator_A", "validator_B", "validator_C", "validator_D"]
-    identities = {v: Ed25519Identity.generate() for v in validators}
-    registry = ValidatorKeyRegistry()
-    for validator, identity in identities.items():
-        registry.register(validator, identity.public_key_bytes)
-    ledger = DeepCoreLedger(validators)
-    tx = Transaction("validator_A", "validator_B", 100_000, 1_000, 1, "validator_A").sign_ed25519(identities["validator_A"])
-    event = ledger.append_ed25519(tx, registry)
-    authorization_commitment = sha256_obj({"request_id": "runtime-demo", "policy": "ALLOW"})
-    proposal = ledger.prepare_block(validators[:3], authorization_commitment)
-    consensus = SignedQuorumCertificate(validators)
-    votes = [consensus.sign_vote(v, proposal, 0, identities[v]) for v in validators[:3]]
-    certificate = consensus.build_certificate(proposal, 0, votes, registry)
-    block = ledger.commit(validators[:3], certificate, authorization_commitment)
-    score, category = ledger.ssil_risk(tx)
-    print("=== DeepCore Runtime Evidence ===")
-    print(f"validators={len(validators)} f={ledger.f} quorum={ledger.quorum}")
-    print(f"block_height={block.height}")
-    print(f"event_id={event.event_id}")
-    print(f"event_root={block.event_root}")
-    print(f"state_root={block.state_root}")
-    print(f"authorization_commitment={block.authorization_commitment}")
-    print(f"block_hash={block.block_hash}")
-    print(f"qc_digest={certificate.digest}")
-    print(f"qc_verified={consensus.verify_certificate(proposal, certificate, registry)}")
-    print(f"ssil_score={score} category={category}")
-    print("ed25519_signature_verified=True")
-    print("chain_commitment_verified=True")
-    print("replay_state_verified=True")
-    print("runtime_status=REFERENCE_IMPLEMENTATION_VERIFIED")
+    initialize_telemetry(
+        service_name="deepcore-enterprise-runtime",
+        service_version="1.0.0",
+    )
+
+    try:
+        with start_span(
+            "deepcore.runtime.reference_execution",
+            {
+                "deepcore.runtime.mode": "reference",
+                "deepcore.runtime.authority": "ledger",
+            },
+        ) as runtime_span:
+            validators = ["validator_A", "validator_B", "validator_C", "validator_D"]
+            identities = {v: Ed25519Identity.generate() for v in validators}
+            registry = ValidatorKeyRegistry()
+            for validator, identity in identities.items():
+                registry.register(validator, identity.public_key_bytes)
+            ledger = DeepCoreLedger(validators)
+            tx = Transaction("validator_A", "validator_B", 100_000, 1_000, 1, "validator_A").sign_ed25519(identities["validator_A"])
+            event = ledger.append_ed25519(tx, registry)
+            authorization_commitment = sha256_obj({"request_id": "runtime-demo", "policy": "ALLOW"})
+            proposal = ledger.prepare_block(validators[:3], authorization_commitment)
+            consensus = SignedQuorumCertificate(validators)
+            votes = [consensus.sign_vote(v, proposal, 0, identities[v]) for v in validators[:3]]
+            certificate = consensus.build_certificate(proposal, 0, votes, registry)
+            block = ledger.commit(validators[:3], certificate, authorization_commitment)
+            score, category = ledger.ssil_risk(tx)
+            qc_verified = consensus.verify_certificate(proposal, certificate, registry)
+
+            runtime_span.set_attribute("deepcore.runtime.validator_count", len(validators))
+            runtime_span.set_attribute("deepcore.runtime.block_height", block.height)
+            runtime_span.set_attribute("deepcore.runtime.qc_verified", qc_verified)
+            runtime_span.set_attribute("deepcore.runtime.ssil_category", category)
+
+            print("=== DeepCore Runtime Evidence ===")
+            print(f"validators={len(validators)} f={ledger.f} quorum={ledger.quorum}")
+            print(f"block_height={block.height}")
+            print(f"event_id={event.event_id}")
+            print(f"event_root={block.event_root}")
+            print(f"state_root={block.state_root}")
+            print(f"authorization_commitment={block.authorization_commitment}")
+            print(f"block_hash={block.block_hash}")
+            print(f"qc_digest={certificate.digest}")
+            print(f"qc_verified={qc_verified}")
+            print(f"ssil_score={score} category={category}")
+            print("ed25519_signature_verified=True")
+            print("chain_commitment_verified=True")
+            print("replay_state_verified=True")
+            print("runtime_status=REFERENCE_IMPLEMENTATION_VERIFIED")
+            print(f"telemetry_status={json.dumps(telemetry_status(), sort_keys=True)}")
+    finally:
+        shutdown_telemetry()
 
 
 if __name__ == "__main__":
