@@ -36,10 +36,13 @@ class TestPropertyInvariants(unittest.TestCase):
             verify_event_chain([{"event": "CREDIT", "amount": 10, "previous_hash": GENESIS}])
 
     def test_malformed_persisted_json_blocks_verification(self):
-        path = Path(tempfile.mktemp())
-        path.write_text('{"event":"CREDIT"}\nnot-json\n', encoding="utf-8")
-        with self.assertRaises(LedgerIntegrityError):
-            EventSourcedLedger(path).verify()
+        with tempfile.TemporaryDirectory() as tmp:
+            ledger = EventSourcedLedger(Path(tmp) / "events.jsonl")
+            ledger.append({"event": "CREDIT", "amount": 10})
+            with ledger.path.open("a", encoding="utf-8") as handle:
+                handle.write("not-json\n")
+            with self.assertRaises(LedgerIntegrityError):
+                ledger.verify()
 
     def test_domain_invariant_rejects_unknown_event(self):
         record = {"event": "UNKNOWN", "amount": 1, "previous_hash": GENESIS}
@@ -56,3 +59,4 @@ class TestPropertyInvariants(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
