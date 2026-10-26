@@ -14,7 +14,19 @@ import sys
 
 ROOT = pathlib.Path(__file__).resolve().parents[1]
 FORBIDDEN_NAME = re.compile(r"(^|/)(\.env($|\.)|.*\.(pem|key|p12|pfx|jks)$|secrets/|credentials/|wallets/)", re.I)
-SECRET_VALUE = re.compile(r"(?i)(api[_-]?key|secret|private[_-]?key|password|token)\s*[:=]\s*['\"]?[A-Za-z0-9_./+\-=]{16,}")
+# Literal values only: runtime expressions and Python type annotations are not secrets.
+SECRET_NAME = r"\b[a-z_]*(?:api[_-]?key|secret|private[_-]?key|password|token)"
+SECRET_VALUE = re.compile(
+    SECRET_NAME + r"[ \t]*[:=][ \t]*([\"'])[A-Za-z0-9_./+\-=]{16,}\1", re.I
+)
+RAW_VALUE = r"[A-Za-z0-9_./+\-=]{16,}(?=[ \t]*(?:$|[#;]))"
+ENV_VALUE = re.compile(r"^[ \t]*(?:export[ \t]+)?" + SECRET_NAME + r"[ \t]*=[ \t]*" + RAW_VALUE, re.I | re.M)
+YAML_VALUE = re.compile(SECRET_NAME + r"[ \t]*:[ \t]*" + RAW_VALUE, re.I | re.M)
+
+
+def contains_secret(sample: str, suffix: str = "") -> bool:
+    return bool(SECRET_VALUE.search(sample) or ENV_VALUE.search(sample)
+                or (suffix in {".yaml", ".yml"} and YAML_VALUE.search(sample)))
 
 
 def main() -> int:
@@ -50,7 +62,7 @@ def main() -> int:
                         sample = file_path.read_text(encoding="utf-8", errors="ignore")
                     except OSError:
                         continue
-                    if SECRET_VALUE.search(sample):
+                    if contains_secret(sample, file_path.suffix):
                         failures.append(f"possible embedded secret in tracked file: {path}")
 
     print("KEY_CUSTODY_PREFLIGHT=" + ("PASS" if not failures else "FAIL"))

@@ -121,3 +121,18 @@ def test_invalid_amount_risk_rejected(ledger_and_secrets):
     ok, reason = ledger.validate(tx, secrets)
     assert not ok
     assert "invalid amount" in reason
+
+
+def test_runtime_script_runs_outside_repository(tmp_path):
+    import os
+    import subprocess
+    import sys
+    from pathlib import Path
+    script = Path(__file__).resolve().parents[1] / 'CORE' / 'deepcore_runtime.py'
+    env = dict(os.environ)
+    env.pop('PYTHONPATH', None)
+    result = subprocess.run([sys.executable, str(script)], cwd=tmp_path, env=env,
+                            capture_output=True, text=True, timeout=30)
+    assert result.returncode == 0, result.stderr
+    assert 'qc_verified=True' in result.stdout
+    assert 'replay_state_verified=True' in result.stdout

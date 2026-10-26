@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import copy
 import json
+import importlib.util
 import sys
 import tempfile
 import unittest
@@ -15,7 +16,13 @@ sys.path.insert(0, str(ROOT / "SECURITY" / "SSIL"))
 sys.path.insert(0, str(ROOT / "PRODUCTION-READINESS-GATES"))
 
 from ledger import EventSourcedLedger  # noqa: E402
-from readiness_evidence_event import build_readiness_evidence_event  # noqa: E402
+spec = importlib.util.spec_from_file_location(
+    "readiness_evidence_event", ROOT / "PRODUCTION-READINESS-GATES" / "readiness-evidence-event.py"
+)
+readiness_module = importlib.util.module_from_spec(spec)
+sys.modules[spec.name] = readiness_module
+spec.loader.exec_module(readiness_module)
+build_readiness_evidence_event = readiness_module.build_readiness_evidence_event
 from ssil_decision_event import build_decision_event  # noqa: E402
 from ssil_readiness_adapter import readiness_to_ssil_evidence  # noqa: E402
 from ssil_readiness_decision_event import build_readiness_decision_event  # noqa: E402

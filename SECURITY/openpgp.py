@@ -7,10 +7,13 @@ No key creation, secret import, network retrieval, or trust-on-first-use occurs 
 from __future__ import annotations
 
 import argparse
+import os
 import re
 import shutil
 import subprocess
 import sys
+import tempfile
+from collections.abc import Callable
 from pathlib import Path
 
 
@@ -91,14 +94,38 @@ class OpenPGP:
             # Avoid printing gpg diagnostics, which may include filenames or user IDs.
             raise OpenPGPError(f"GnuPG {operation} failed (exit code {result.returncode})")
 
+    @staticmethod
+    def _statuses(result: subprocess.CompletedProcess[str]) -> list[list[str]]:
+        return [fields for line in result.stdout.splitlines()
+                if line.startswith("[GNUPG:] ")
+                if (fields := line[len("[GNUPG:] "):].split())]
+
+    def _write_artifact(self, source: Path, dest: Path, operation: str,
+                        arguments: tuple[str, ...],
+                        validate: Callable[[subprocess.CompletedProcess[str]], None] | None = None) -> Path:
+        # GnuPG may emit plaintext before reporting a bad integrity check. Keep
+        # all output private until both GnuPG and our policy accept the result.
+        try:
+            with tempfile.TemporaryDirectory(prefix=".openpgp-", dir=dest.parent) as staging:
+                staged = Path(staging) / "artifact"
+                result = self._run(*arguments, "--output", str(staged), "--", str(source))
+                self._require_success(result, operation)
+                if validate is not None:
+                    validate(result)
+                staged.chmod(0o600)
+                # Same-filesystem hard link publishes atomically and refuses a
+                # destination created after _check_output (including symlinks).
+                os.link(staged, dest)
+        except OSError as exc:
+            raise OpenPGPError(f"Unable to publish {operation} output without overwriting") from exc
+        return dest
+
     def sign(self, data: str | Path, signature: str | Path) -> Path:
         self.require_key(secret=True)
         source = self._check_input(data)
         dest = self._check_output(signature)
-        result = self._run("--armor", "--local-user", self.fingerprint, "--detach-sign",
-                           "--output", str(dest), "--", str(source))
-        self._require_success(result, "signing")
-        return dest
+        return self._write_artifact(source, dest, "signing",
+                                    ("--armor", "--local-user", self.fingerprint, "--detach-sign"))
 
     def verify(self, data: str | Path, signature: str | Path) -> bool:
         self.require_key()
@@ -107,14 +134,15 @@ class OpenPGP:
         result = self._run("--status-fd", "1", "--verify", "--", str(detached), str(source))
         if result.returncode:
             return False
-        statuses = [line[len("[GNUPG:] "):].split()
-                    for line in result.stdout.splitlines() if line.startswith("[GNUPG:] ")]
-        if any(s[0] in {"BADSIG", "ERRSIG", "REVKEYSIG", "EXPKEYSIG"} for s in statuses):
+        statuses = self._statuses(result)
+        if any(s[0] in {"BADSIG", "ERRSIG", "REVKEYSIG", "EXPKEYSIG", "EXPSIG"} for s in statuses):
             return False
         valid = [s for s in statuses if s[0] == "VALIDSIG"]
         if len(valid) != 1:
             return False  # no valid signature, or ambiguous/multiple signatures
         record = valid[0]
+        if len(record) < 10:
+            return False
         # VALIDSIG includes the signing key and (when present) its primary fingerprint.
         # Subkey signatures must belong to our exact pinned primary key.
         signer = record[1].upper()
@@ -127,19 +155,48 @@ class OpenPGP:
         dest = self._check_output(ciphertext)
         # The recipient is already pinned to a full fingerprint, not a user ID.
         # Independent out-of-band fingerprint verification is required at enrollment.
-        result = self._run("--trust-model", "always", "--armor", "--recipient",
-                           self.fingerprint, "--encrypt", "--output", str(dest), "--", str(source))
-        self._require_success(result, "encryption")
-        return dest
+        return self._write_artifact(source, dest, "encryption",
+                                    ("--trust-model", "always", "--armor", "--recipient",
+                                     self.fingerprint, "--encrypt"))
+
+    def _validate_decryption(self, result: subprocess.CompletedProcess[str]) -> None:
+        statuses = self._statuses(result)
+        keys = [s for s in statuses if s[0] == "DECRYPTION_KEY"]
+        if len(keys) != 1 or len(keys[0]) < 3 or keys[0][2].upper() != self.fingerprint:
+            raise OpenPGPError("Decryption did not use the pinned primary key or its subkey")
+        # Check the actual selected primary/subkey against the local keyring's
+        # current validity; possessing another secret key is not authorization.
+        selected = keys[0][1].upper()
+        listing = self._run("--with-colons", "--with-subkey-fingerprint", "--list-keys", self.fingerprint)
+        self._require_success(listing, "decryption key validation")
+        validity = None
+        usable = False
+        for line in listing.stdout.splitlines():
+            fields = line.split(":")
+            if fields[0] in {"pub", "sub"}:
+                validity = fields[1]
+            elif fields[0] == "fpr" and validity is not None:
+                if len(fields) > 9 and fields[9].upper() == selected:
+                    usable = not any(flag in validity.lower() for flag in _BAD_VALIDITY)
+                validity = None
+        if not usable:
+            raise OpenPGPError("Decryption key is unavailable, expired, revoked, disabled, or invalid")
+        tags = {s[0] for s in statuses}
+        info = [s for s in statuses if s[0] == "DECRYPTION_INFO"]
+        aead = (len(info) == 1 and len(info[0]) > 3
+                and info[0][3].isdigit() and int(info[0][3]) > 0)
+        if (tags & {"BADMDC", "ERRMDC", "DECRYPTION_FAILED", "ERROR", "FAILURE"}
+                or "DECRYPTION_OKAY" not in tags
+                or not ("GOODMDC" in tags or aead)):
+            raise OpenPGPError("Decryption integrity was not confirmed")
 
     def decrypt(self, ciphertext: str | Path, plaintext: str | Path) -> Path:
         self.require_key(secret=True)
         source = self._check_input(ciphertext)
         dest = self._check_output(plaintext)
-        result = self._run("--decrypt", "--output", str(dest), "--", str(source))
-        self._require_success(result, "decryption")
         # Decryption alone NEVER authenticates a sender or authorizes ledger actions.
-        return dest
+        return self._write_artifact(source, dest, "decryption",
+                                    ("--status-fd", "1", "--decrypt"), self._validate_decryption)
 
 
 def main(argv: list[str] | None = None) -> int:

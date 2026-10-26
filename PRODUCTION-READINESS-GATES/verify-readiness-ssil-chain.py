@@ -7,6 +7,7 @@ production, authorize deployment, or grant key/ledger authority.
 from __future__ import annotations
 
 import json
+import importlib.util
 import sys
 import tempfile
 from pathlib import Path
@@ -17,7 +18,13 @@ sys.path.insert(0, str(ROOT / "CORE" / "event-sourced-ledger"))
 sys.path.insert(0, str(ROOT / "SECURITY" / "SSIL"))
 
 from ledger import EventSourcedLedger, LedgerIntegrityError  # noqa: E402
-from readiness_evidence_event import build_readiness_evidence_event  # noqa: E402
+spec = importlib.util.spec_from_file_location(
+    "readiness_evidence_event", Path(__file__).with_name("readiness-evidence-event.py")
+)
+readiness_module = importlib.util.module_from_spec(spec)
+sys.modules[spec.name] = readiness_module
+spec.loader.exec_module(readiness_module)
+build_readiness_evidence_event = readiness_module.build_readiness_evidence_event
 from ssil_decision_event import build_decision_event, validate_decision_event  # noqa: E402
 from ssil_readiness_adapter import readiness_to_ssil_evidence  # noqa: E402
 from ssil_readiness_decision_event import (  # noqa: E402

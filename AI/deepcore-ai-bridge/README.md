@@ -7,7 +7,7 @@ A local VS Code/terminal bridge for sending selected DeepCore source files to an
 ```bash
 cd AI/deepcore-ai-bridge
 npm install
-cp .env.example .env
+cp config.example .env
 ```
 
 Never commit `.env` or API keys.

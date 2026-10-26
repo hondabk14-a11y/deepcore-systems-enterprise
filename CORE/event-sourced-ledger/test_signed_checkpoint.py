@@ -1,4 +1,5 @@
 import unittest
+from types import SimpleNamespace
 
 from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
 
@@ -19,7 +20,7 @@ class TestSignedCheckpoint(unittest.TestCase):
     def test_valid_signature(self):
         result = verify_signed_checkpoint(
             self.signed,
-            key_resolver=lambda key_id: self.public_key,
+            key_resolver=SimpleNamespace(resolve=lambda key_id: self.public_key),
             verifier=__import__("ed25519_checkpoint").Ed25519CheckpointVerifier(),
         )
         self.assertEqual(result, self.signed.to_checkpoint())
@@ -27,13 +28,13 @@ class TestSignedCheckpoint(unittest.TestCase):
     def test_tampering_is_rejected(self):
         tampered = SignedCheckpoint("ledger-A", 4, "abc123", 3, "key-1", self.signed.signature)
         with self.assertRaises(SignatureVerificationError):
-            verify_signed_checkpoint(tampered, key_resolver=lambda _: self.public_key,
+            verify_signed_checkpoint(tampered, key_resolver=SimpleNamespace(resolve=lambda _: self.public_key),
                                      verifier=__import__("ed25519_checkpoint").Ed25519CheckpointVerifier())
 
     def test_wrong_key_is_rejected(self):
         wrong = Ed25519PrivateKey.generate().public_key().public_bytes_raw()
         with self.assertRaises(SignatureVerificationError):
-            verify_signed_checkpoint(self.signed, key_resolver=lambda _: wrong,
+            verify_signed_checkpoint(self.signed, key_resolver=SimpleNamespace(resolve=lambda _: wrong),
                                      verifier=__import__("ed25519_checkpoint").Ed25519CheckpointVerifier())
 
 

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import importlib.util
 import sys
 import tempfile
 import unittest
@@ -14,7 +15,13 @@ sys.path.insert(0, str(ROOT / "PRODUCTION-READINESS-GATES"))
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 from ledger import EventSourcedLedger, LedgerIntegrityError  # noqa: E402
-from readiness_evidence_event import build_readiness_evidence_event  # noqa: E402
+spec = importlib.util.spec_from_file_location(
+    "readiness_evidence_event", ROOT / "PRODUCTION-READINESS-GATES" / "readiness-evidence-event.py"
+)
+readiness_module = importlib.util.module_from_spec(spec)
+sys.modules[spec.name] = readiness_module
+spec.loader.exec_module(readiness_module)
+build_readiness_evidence_event = readiness_module.build_readiness_evidence_event
 from ssil_decision_event import build_decision_event  # noqa: E402
 from ssil_engine import SSILEvidence  # noqa: E402
 from ssil_readiness_decision_event import build_readiness_decision_event  # noqa: E402

@@ -38,20 +38,19 @@ def _event(provider: str, price: str):
         currency="usd",
         retrieved_at="2026-09-14T00:00:00+00:00",
     )
-    # Keep the canonical event boundary while allowing the test to model an
-    # independent provider observation without granting it any authority.
-    if provider != "coingecko":
-        observation = observation.__class__(
-            provider=provider,
-            coingecko_id=observation.coingecko_id,
-            symbol=observation.symbol,
-            name=observation.name,
-            price=observation.price,
-            currency=observation.currency,
-            retrieved_at=observation.retrieved_at,
-            provenance_hash=observation.provenance_hash,
-        )
-    return build_market_price_event(observation)
+    event = build_market_price_event(observation)
+    if provider == "coingecko":
+        return event
+    # Model the second provider at the generic event boundary. The CoinGecko
+    # adapter must continue rejecting observations attributed to other sources.
+    source = observation.canonical_dict() | {"provider": provider}
+    payload = event.canonical_dict() | {
+        "provider": provider,
+        "provenance_hash": observation_module.canonical_hash(source),
+    }
+    return event_module.MarketPriceEvent(
+        **payload, event_hash=observation_module.canonical_hash(payload)
+    )
 
 
 def test_matching_independent_observations_are_verified() -> None:
