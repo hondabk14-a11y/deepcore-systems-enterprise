@@ -114,3 +114,12 @@ def test_wrong_proposal_certificate_rejected():
     certificate = make_certificate(identities, registry, proposal, consensus)
     altered = type(proposal)(proposal.height, proposal.previous_hash, proposal.state_root, proposal.event_root, proposal.validator_votes, proposal.events, "11" * 32, None)
     assert consensus.verify_certificate(altered, certificate, registry) is False
+
+
+def test_certificate_verifies_committed_block_and_rejects_changed_events():
+    from dataclasses import replace
+    identities, registry, ledger, proposal, consensus = setup_consensus()
+    certificate = make_certificate(identities, registry, proposal, consensus)
+    committed = ledger.commit(VALIDATORS[:3], certificate)
+    assert consensus.verify_certificate(committed, certificate, registry)
+    assert not consensus.verify_certificate(replace(proposal, events=()), certificate, registry)

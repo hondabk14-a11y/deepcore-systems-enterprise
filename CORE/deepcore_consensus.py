@@ -12,7 +12,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Any
 
-from CORE.deepcore_runtime import Block, canonical, sha256_bytes
+from CORE.deepcore_runtime import Block, DeepCoreLedger, canonical, sha256_bytes, sha256_obj, merkle_root
 
 
 @dataclass(frozen=True)
@@ -119,6 +119,10 @@ class SignedQuorumCertificate:
         return QuorumCertificate(block.height, round, proposal, tuple(sorted(valid, key=lambda v: v.validator)))
 
     def verify_certificate(self, block: Block, certificate: QuorumCertificate, registry: Any) -> bool:
+        if sha256_obj(DeepCoreLedger._block_body(block)) != block.block_hash:
+            return False
+        if merkle_root([event.event_id for event in block.events]) != block.event_root:
+            return False
         proposal = self.proposal_hash(block)
         if certificate.height != block.height or certificate.proposal_hash != proposal:
             return False

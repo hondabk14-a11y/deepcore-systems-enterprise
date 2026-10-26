@@ -7,8 +7,13 @@ import hashlib
 import hmac
 import json
 import re
+import sys
 from dataclasses import dataclass
+from pathlib import Path
 from typing import Any
+
+if __name__ == "__main__" and not __package__:
+    sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 ZERO_HASH = hashlib.sha256(b"").hexdigest()
 _SHA256_HEX = re.compile(r"^[0-9a-fA-F]{64}$")
@@ -115,7 +120,7 @@ class DeepCoreLedger:
 
     def weighted_quorum_met(self, voters: list[str]) -> bool:
         unique = set(voters)
-        if not unique.issubset(self.weights):
+        if len(unique) < self.quorum or not unique.issubset(self.weights):
             return False
         return sum(self.weights[v] for v in unique) * 3 >= self.total_weight * 2
 

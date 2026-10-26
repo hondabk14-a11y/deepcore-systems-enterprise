@@ -1,4 +1,5 @@
 import unittest
+from types import SimpleNamespace
 
 from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
 
@@ -32,7 +33,7 @@ class TestEd25519CheckpointVerifier(unittest.TestCase):
     def test_real_ed25519_signature_verifies(self):
         result = verify_signed_checkpoint(
             self.signed,
-            key_resolver=lambda key_id: self.public_key,
+            key_resolver=SimpleNamespace(resolve=lambda key_id: self.public_key),
             verifier=Ed25519CheckpointVerifier(),
         )
         self.assertEqual(result, self.signed.to_checkpoint())
@@ -49,7 +50,7 @@ class TestEd25519CheckpointVerifier(unittest.TestCase):
         with self.assertRaises(SignatureVerificationError):
             verify_signed_checkpoint(
                 tampered,
-                key_resolver=lambda key_id: self.public_key,
+                key_resolver=SimpleNamespace(resolve=lambda key_id: self.public_key),
                 verifier=Ed25519CheckpointVerifier(),
             )
 
@@ -58,7 +59,7 @@ class TestEd25519CheckpointVerifier(unittest.TestCase):
         with self.assertRaises(SignatureVerificationError):
             verify_signed_checkpoint(
                 self.signed,
-                key_resolver=lambda key_id: wrong_public_key,
+                key_resolver=SimpleNamespace(resolve=lambda key_id: wrong_public_key),
                 verifier=Ed25519CheckpointVerifier(),
             )
 
@@ -74,7 +75,7 @@ class TestEd25519CheckpointVerifier(unittest.TestCase):
         with self.assertRaises(SignatureVerificationError):
             verify_signed_checkpoint(
                 malformed,
-                key_resolver=lambda key_id: self.public_key,
+                key_resolver=SimpleNamespace(resolve=lambda key_id: self.public_key),
                 verifier=Ed25519CheckpointVerifier(),
             )
 

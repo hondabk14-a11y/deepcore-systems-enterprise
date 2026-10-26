@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import importlib.util
 import sys
 import tempfile
 import unittest
@@ -11,7 +12,13 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "PRODUCTION-READINESS-GATES"))
 
-from write_readiness_ssil_audit_record import build_record  # noqa: E402
+spec = importlib.util.spec_from_file_location(
+    "write_readiness_ssil_audit_record", Path(__file__).with_name("write-readiness-ssil-audit-record.py")
+)
+writer_module = importlib.util.module_from_spec(spec)
+sys.modules[spec.name] = writer_module
+spec.loader.exec_module(writer_module)
+build_record = writer_module.build_record
 
 
 class ReadinessSSILAuditRecordTests(unittest.TestCase):

@@ -12,8 +12,8 @@ from CORE.deepcore_runtime import Block, Event, Transaction, ZERO_HASH, merkle_r
 VALIDATORS = ["validator_A", "validator_B", "validator_C", "validator_D"]
 
 
-def setup():
-    identities = {v: Ed25519Identity.generate() for v in VALIDATORS}
+def setup(identities=None):
+    identities = identities or {v: Ed25519Identity.generate() for v in VALIDATORS}
     registry = ValidatorKeyRegistry()
     for v, identity in identities.items():
         registry.register(v, identity.public_key_bytes)
@@ -132,8 +132,10 @@ def test_revoked_validator_rejected():
 
 
 def test_transition_is_deterministic():
-    m1, _, _, block1, votes1, _ = setup()
-    m2, _, _, block2, votes2, _ = setup()
+    m1, _, identities, block1, votes1, _ = setup()
+    # Deterministic transitions require identical signed inputs. Fresh keys
+    # create different transaction signatures and therefore different roots.
+    m2, _, _, block2, votes2, _ = setup(identities)
     assert m1.propose("validator_A", block1, 0) == m2.propose("validator_A", block2, 0)
     assert m1.state.phase == m2.state.phase == Phase.PREPARE
     qc1 = m1.prepare(block1, 0, votes1)

@@ -47,6 +47,11 @@ jobs:
           tests/test_ust_ssil_gate.py
           tests/test_ust_controller.py
 
+      - name: Verify OpenPGP artifact adapter
+        run: |
+          command -v gpg
+          python -m pytest -q tests/test_openpgp.py tests/test_openpgp_policy.py tests/test_key_custody_scanner.py
+
       - name: Run CoinGecko observation and SDK adapter verification
         run: >-
           python -m pytest -q

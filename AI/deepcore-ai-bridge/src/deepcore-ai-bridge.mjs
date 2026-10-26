@@ -23,7 +23,7 @@ const apiKey = isOpenRouter
   : process.env.OPENAI_API_KEY || (isLocal ? "deepcore-local" : "");
 
 if (!apiKey) {
-  console.error(`${isOpenRouter ? "OPENROUTER_API_KEY" : "OPENAI_API_KEY"} is not set. Create a local .env from .env.example.`);
+  console.error(`${isOpenRouter ? "OPENROUTER_API_KEY" : "OPENAI_API_KEY"} is not set. Create a local .env from config.example.`);
   process.exit(2);
 }
 
