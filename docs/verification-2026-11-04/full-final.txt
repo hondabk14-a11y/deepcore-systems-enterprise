@@ -1,0 +1,24 @@
+...........................................FFFF......................... [ 25%]
+..F................FFF........................F.......F..............FF. [ 50%]
+FF.F.................................................................F.. [ 76%]
+.....................F..................F...........................     [100%]
+=========================== short test summary info ============================
+FAILED CORE/event-sourced-ledger/test_ed25519_checkpoint.py::TestEd25519CheckpointVerifier::test_malformed_signature_is_rejected
+FAILED CORE/event-sourced-ledger/test_ed25519_checkpoint.py::TestEd25519CheckpointVerifier::test_real_ed25519_signature_verifies
+FAILED CORE/event-sourced-ledger/test_ed25519_checkpoint.py::TestEd25519CheckpointVerifier::test_tampered_checkpoint_is_rejected
+FAILED CORE/event-sourced-ledger/test_ed25519_checkpoint.py::TestEd25519CheckpointVerifier::test_wrong_public_key_is_rejected
+FAILED CORE/event-sourced-ledger/test_property_invariants.py::TestPropertyInvariants::test_malformed_persisted_json_blocks_verification
+FAILED CORE/event-sourced-ledger/test_signed_checkpoint.py::TestSignedCheckpoint::test_tampering_is_rejected
+FAILED CORE/event-sourced-ledger/test_signed_checkpoint.py::TestSignedCheckpoint::test_valid_signature
+FAILED CORE/event-sourced-ledger/test_signed_checkpoint.py::TestSignedCheckpoint::test_wrong_key_is_rejected
+FAILED MARKET-DATA/test_ledger_admission.py::test_valid_request_is_admitted_only_after_authorization
+FAILED MARKET-DATA/test_ledger_admission.py::test_admission_does_not_create_signature_or_private_key_material
+FAILED MARKET-DATA/test_market_verification.py::test_matching_independent_observations_are_verified
+FAILED MARKET-DATA/test_market_verification.py::test_material_price_divergence_is_preserved_as_discrepancy
+FAILED MARKET-DATA/test_market_verification.py::test_mismatched_asset_is_rejected
+FAILED MARKET-DATA/test_market_verification.py::test_mismatched_currency_is_rejected
+FAILED MARKET-DATA/test_market_verification.py::test_result_hash_is_deterministic_and_source_hashes_are_preserved
+FAILED tests/test_deepcore_consensus.py::test_wrong_proposal_certificate_rejected
+FAILED tests/test_deepcore_hotstuff.py::test_transition_is_deterministic - As...
+FAILED tests/test_deepcore_runtime.py::test_weighted_quorum - AssertionError:...
+18 failed, 266 passed in 0.57s

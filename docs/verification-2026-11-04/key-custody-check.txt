@@ -1,0 +1,12 @@
+KEY_CUSTODY_PREFLIGHT=FAIL
+SCOPE=repository custody-boundary preflight
+PRIVATE_KEYS=not loaded, generated, printed, or stored by this checker
+FAILURE=forbidden credential/key path tracked: AI/deepcore-ai-bridge/.env.example
+FAILURE=possible embedded secret in tracked file: AI/deepcore-ai-bridge/.env.example
+FAILURE=possible embedded secret in tracked file: AI/deepcore-ai-bridge/README.md
+FAILURE=possible embedded secret in tracked file: AI/deepcore-ai-bridge/src/deepcore-ai-bridge.mjs
+FAILURE=possible embedded secret in tracked file: CORE/deepcore_crypto.py
+FAILURE=possible embedded secret in tracked file: CORE/event-sourced-ledger/test_ed25519_checkpoint.py
+FAILURE=possible embedded secret in tracked file: CORE/event-sourced-ledger/test_ed25519_checkpoint_vectors.py
+FAILURE=possible embedded secret in tracked file: CORE/event-sourced-ledger/test_signed_checkpoint.py
+FAILURE=possible embedded secret in tracked file: MARKET-DATA/test_authorization_validator.py

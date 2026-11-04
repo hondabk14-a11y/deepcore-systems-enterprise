@@ -1,0 +1,12 @@
+✔ accepts expected model advertisement (0.925316ms)
+✔ rejects missing expected model (0.304494ms)
+✔ accepts a valid chat completion (0.13308ms)
+✔ rejects malformed chat completion (0.091998ms)
+ℹ tests 4
+ℹ suites 0
+ℹ pass 4
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 69.045865

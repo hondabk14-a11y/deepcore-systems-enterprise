@@ -1,0 +1,14 @@
+[PASS] repository root: /workspace/deepcore-systems-enterprise
+[PASS] python runtime: 3.12.14
+[PASS] git available: /usr/local/bin/git
+[PASS] required control .gitignore: present
+[PASS] required control SECURITY.md: present
+[PASS] required control PRODUCTION-GATE.md: present
+[PASS] required control .github/workflows/production-gate.yml: present
+[PASS] required control .github/workflows/security-gate.yml: present
+[PASS] required control CORE/event-sourced-ledger/ledger.py: present
+[PASS] required control CORE/event-sourced-ledger/test_ledger.py: present
+[PASS] secret values not exposed by checker: observed 0 configured secret variable(s); values not printed
+INFRASTRUCTURE_PREFLIGHT=PASS
+SCOPE=local repository and execution-host preflight only
+NOTE=remote production infrastructure, key custody, backup, rollback, and observability require environment-specific evidence

@@ -1,0 +1,5 @@
+ROLLBACK_PREFLIGHT=PASS
+SCOPE=synthetic release-pointer rollback test
+RESULT=known-good release was activated, candidate state modeled, and known-good state restored exactly
+PRODUCTION_DEPLOYMENT=not performed
+NOTE=production rollback requires environment-specific deployment evidence, health gates, database/schema compatibility checks, traffic controls, operator authorization, and a tested rollback runbook
