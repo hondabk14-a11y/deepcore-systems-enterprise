@@ -11,7 +11,12 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "PRODUCTION-READINESS-GATES"))
 
-from write_readiness_ssil_audit_record import build_record  # noqa: E402
+import importlib.util
+_spec = importlib.util.spec_from_file_location("write_readiness_ssil_audit_record", Path(__file__).with_name("write-readiness-ssil-audit-record.py"))
+_module = importlib.util.module_from_spec(_spec)
+sys.modules[_spec.name] = _module
+_spec.loader.exec_module(_module)
+build_record = _module.build_record
 
 
 class ReadinessSSILAuditRecordTests(unittest.TestCase):

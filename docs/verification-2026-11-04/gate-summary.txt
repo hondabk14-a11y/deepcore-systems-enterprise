@@ -1,0 +1,14 @@
+DEEPCORE_PRODUCTION_READINESS
+===============================
+[CONTROL PRESENT / EVIDENCE PENDING] CI: ../.github/workflows/production-gate.yml
+[CONTROL PRESENT / EVIDENCE PENDING] Security / CodeQL: ../.github/workflows/security-gate.yml
+[CONTROL PRESENT / EVIDENCE PENDING] VSIX packaging: ../.github/workflows/extension-package.yml
+[CONTROL PRESENT / EVIDENCE PENDING] Infrastructure: infrastructure-health-check.py
+[CONTROL PRESENT / EVIDENCE PENDING] Key custody: key-custody-check.py
+[CONTROL PRESENT / EVIDENCE PENDING] Backup / restore: backup-restore-check.py
+[CONTROL PRESENT / EVIDENCE PENDING] Rollback: rollback-check.py
+[CONTROL PRESENT / EVIDENCE PENDING] Observability: observability-check.py
+
+WORKFLOW HYGIENE: EVIDENCE PENDING; stale BuildFailed registration must be disabled/removed
+PRODUCTION CERTIFICATION: NOT CERTIFIED
+CLASSIFICATION: PRODUCTION-CANDIDATE / CI-VERIFIED CORE

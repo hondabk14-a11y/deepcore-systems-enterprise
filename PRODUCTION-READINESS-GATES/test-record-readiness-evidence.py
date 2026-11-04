@@ -13,7 +13,12 @@ sys.path.insert(0, str(ROOT / "CORE" / "event-sourced-ledger"))
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 from ledger import EventSourcedLedger  # noqa: E402
-from record_readiness_evidence import record  # noqa: E402
+import importlib.util
+_spec = importlib.util.spec_from_file_location("record_readiness_evidence", Path(__file__).with_name("record-readiness-evidence.py"))
+_module = importlib.util.module_from_spec(_spec)
+sys.modules[_spec.name] = _module
+_spec.loader.exec_module(_module)
+record = _module.record
 
 
 class ReadinessEvidenceLedgerTests(unittest.TestCase):

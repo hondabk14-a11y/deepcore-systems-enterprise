@@ -1,0 +1,6 @@
+OBSERVABILITY_PREFLIGHT=PASS
+SCOPE=repository telemetry contract preflight
+SIGNALS=availability,latency,error,event,consensus,security,backup,rollback
+RESULT=required operational signal categories are represented in repository controls
+PRODUCTION_TELEMETRY=not queried
+NOTE=production dashboards, metric exporters, logs, traces, alert routing, SLO thresholds, on-call response, and alert drills require environment-specific evidence
