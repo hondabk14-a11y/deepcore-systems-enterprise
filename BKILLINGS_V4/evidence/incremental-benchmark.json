@@ -1,0 +1,42 @@
+{
+  "baseline": {
+    "mode": "full-replay-per-operation",
+    "final_state_root": "c185767c333a9d3dc0cb51860304e9881ddfebc927227b9c44515b05a1f9df7a",
+    "final_block_hash": "dbd1aea3e8f017abf5857468ec38b4d93b8e7de3b889305b74d9e9b79eb5ef41",
+    "audit_equal": true,
+    "blocks": 100,
+    "transactions": 1000,
+    "batch_size": 10,
+    "elapsed_seconds": 107.0187,
+    "transactions_per_second": 9.34,
+    "block_p50_ms": 1080.55,
+    "block_p95_ms": 1966.88,
+    "full_replay_ms": 416.04,
+    "python": "3.12.14",
+    "sqlite": "3.53.1",
+    "cryptography": "46.0.0",
+    "scope": "single machine; three signer keys in one process; no network/HSM; final replay independently audited",
+    "production_capacity_claim": false
+  },
+  "incremental": {
+    "mode": "incremental",
+    "final_state_root": "c185767c333a9d3dc0cb51860304e9881ddfebc927227b9c44515b05a1f9df7a",
+    "final_block_hash": "dbd1aea3e8f017abf5857468ec38b4d93b8e7de3b889305b74d9e9b79eb5ef41",
+    "audit_equal": true,
+    "blocks": 100,
+    "transactions": 1000,
+    "batch_size": 10,
+    "elapsed_seconds": 1.9941,
+    "transactions_per_second": 501.48,
+    "block_p50_ms": 19.02,
+    "block_p95_ms": 24.5,
+    "full_replay_ms": 414.82,
+    "python": "3.12.14",
+    "sqlite": "3.53.1",
+    "cryptography": "46.0.0",
+    "scope": "single machine; three signer keys in one process; no network/HSM; final replay independently audited",
+    "production_capacity_claim": false
+  },
+  "identical_final_state_and_block": true,
+  "throughput_ratio": 53.69
+}

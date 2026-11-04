@@ -1,0 +1,10 @@
+*
+!requirements.txt
+!protocol.py
+!storage.py
+!key_store.py
+!node.py
+!cluster_demo.py
+!benchmark.py
+!tests/
+!tests/*.py

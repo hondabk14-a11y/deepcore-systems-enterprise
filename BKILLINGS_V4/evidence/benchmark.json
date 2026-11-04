@@ -1,0 +1,15 @@
+{
+  "blocks": 100,
+  "transactions": 1000,
+  "batch_size": 10,
+  "elapsed_seconds": 60.1079,
+  "transactions_per_second": 16.64,
+  "block_p50_ms": 603.79,
+  "block_p95_ms": 1135.08,
+  "full_replay_ms": 234.63,
+  "python": "3.12.14",
+  "sqlite": "3.53.1",
+  "cryptography": "46.0.0",
+  "scope": "single machine; three signer keys in one process; full replay per operation; no network/HSM",
+  "production_capacity_claim": false
+}
