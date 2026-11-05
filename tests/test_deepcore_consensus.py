@@ -1,3 +1,7 @@
+from dataclasses import replace
+
+import pytest
+
 from CORE.deepcore_consensus import SignedQuorumCertificate
 from CORE.deepcore_crypto import Ed25519Identity
 from CORE.deepcore_key_registry import ValidatorKeyRegistry
@@ -109,8 +113,30 @@ def test_weighted_quorum_enforced():
     assert consensus.verify_certificate(proposal, certificate, registry)
 
 
-def test_wrong_proposal_certificate_rejected():
+@pytest.mark.parametrize("changed_fields", [
+    {"height": 2},
+    {"previous_hash": "11" * 32},
+    {"state_root": "11" * 32},
+    {"event_root": "11" * 32},
+    {"validator_votes": ("validator_A", "validator_B", "validator_D")},
+    {"authorization_commitment": "11" * 32},
+])
+def test_wrong_proposal_certificate_rejected(changed_fields):
     identities, registry, _, proposal, consensus = setup_consensus()
     certificate = make_certificate(identities, registry, proposal, consensus)
-    altered = type(proposal)(proposal.height, proposal.previous_hash, proposal.state_root, proposal.event_root, proposal.validator_votes, proposal.events, "11" * 32, None)
+    # Certificates bind the proposal fields, not the final block hash (which
+    # includes the certificate digest and would create a circular commitment).
+    altered = replace(proposal, **changed_fields)
     assert consensus.verify_certificate(altered, certificate, registry) is False
+
+
+def test_final_block_hash_tampering_rejected_by_ledger():
+    identities, registry, ledger, proposal, consensus = setup_consensus()
+    certificate = make_certificate(identities, registry, proposal, consensus)
+    block = ledger.commit(VALIDATORS[:3], certificate)
+    altered = replace(block, block_hash="11" * 32)
+    assert consensus.verify_certificate(altered, certificate, registry)
+    assert not ledger.verify_block(altered, proposal.previous_hash)
+    ledger.blocks[-1] = altered
+    with pytest.raises(ValueError, match="invalid block commitment"):
+        ledger.replay()

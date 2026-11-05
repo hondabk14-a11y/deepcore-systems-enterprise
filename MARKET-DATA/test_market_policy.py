@@ -2,23 +2,10 @@
 
 from __future__ import annotations
 
-import importlib.util
-from pathlib import Path
 
 
-ROOT = Path(__file__).resolve().parent
-
-
-def _load(name: str, filename: str):
-    spec = importlib.util.spec_from_file_location(name, ROOT / filename)
-    module = importlib.util.module_from_spec(spec)
-    assert spec.loader is not None
-    spec.loader.exec_module(module)
-    return module
-
-
-risk_module = _load("market_risk", "market_risk.py")
-policy_module = _load("market_policy", "market_policy.py")
+import market_risk as risk_module
+import market_policy as policy_module
 
 
 def _assessment(score: int):
@@ -80,3 +67,4 @@ def test_policy_decision_hash_is_deterministic() -> None:
     second = policy_module.evaluate_market_policy(_assessment(80))
     assert first.decision_hash == second.decision_hash
     assert first.decision == "BLOCK"
+

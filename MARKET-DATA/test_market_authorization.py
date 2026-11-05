@@ -2,24 +2,11 @@
 
 from __future__ import annotations
 
-import importlib.util
-from pathlib import Path
 
 import pytest
 
-ROOT = Path(__file__).resolve().parent
-
-
-def _load(name: str, filename: str):
-    spec = importlib.util.spec_from_file_location(name, ROOT / filename)
-    module = importlib.util.module_from_spec(spec)
-    assert spec.loader is not None
-    spec.loader.exec_module(module)
-    return module
-
-
-policy = _load("market_policy", "market_policy.py")
-authorization = _load("market_authorization", "market_authorization.py")
+import market_policy as policy
+import market_authorization as authorization
 
 
 def _decision(name: str = "ALLOW"):
@@ -97,3 +84,4 @@ def test_request_hash_is_deterministic() -> None:
     first = authorization.build_authorization_request(_decision(), **kwargs)
     second = authorization.build_authorization_request(_decision(), **kwargs)
     assert first.request_hash == second.request_hash
+

@@ -72,14 +72,52 @@ def test_unknown_vote_rejected(ledger_and_secrets):
         ledger.commit(["validator_A", "validator_B", "intruder"])
 
 
-def test_weighted_quorum(ledger_and_secrets):
-    ledger, _ = ledger_and_secrets
+@pytest.mark.parametrize("voters, expected", [
+    ([], False),
+    (["validator_A"], False),
+    (["validator_A", "validator_A"], False),
+    (["validator_A", "validator_B"], True),
+    (["validator_A", "validator_B", "validator_C"], True),
+    (["validator_B", "validator_C", "validator_D"], False),
+    (["validator_A", "validator_B", "intruder"], False),
+])
+def test_weighted_quorum(voters, expected):
     weighted = DeepCoreLedger(
         ["validator_A", "validator_B", "validator_C", "validator_D"],
         weights={"validator_A": 4, "validator_B": 1, "validator_C": 1, "validator_D": 1},
     )
-    assert weighted.weighted_quorum_met(["validator_A", "validator_B"]) is False
-    assert weighted.weighted_quorum_met(["validator_A", "validator_B", "validator_C"]) is True
+    # This predicate checks weight only: A+B has 5/7 of the weight.
+    # prepare_block/commit separately enforce the distinct-validator count.
+    assert weighted.weighted_quorum_met(voters) is expected
+
+
+def test_weighted_commit_requires_both_count_and_weight(ledger_and_secrets):
+    _, secrets = ledger_and_secrets
+    ledger = DeepCoreLedger(
+        list(secrets),
+        weights={"validator_A": 4, "validator_B": 1, "validator_C": 1, "validator_D": 1},
+    )
+    event = ledger.append(signed_tx(secrets), secrets)
+    initial_state_root = ledger.state_root()
+
+    # Weight passes, but two unique validators cannot satisfy the count quorum.
+    for voters in (["validator_A", "validator_B"],
+                   ["validator_A", "validator_B", "validator_B"]):
+        with pytest.raises(ValueError, match="BFT quorum not met"):
+            ledger.commit(voters)
+        assert ledger.state_root() == initial_state_root
+        assert ledger.events == [event] and ledger.blocks == []
+
+    # Three unique validators still fail when they hold only 3/7 of the weight.
+    with pytest.raises(ValueError, match="weighted quorum not met"):
+        ledger.commit(["validator_B", "validator_C", "validator_D"])
+    assert ledger.state_root() == initial_state_root
+    assert ledger.events == [event] and ledger.blocks == []
+
+    block = ledger.commit(["validator_A", "validator_B", "validator_C"])
+    assert block.height == 1
+    assert ledger.events == []
+    assert ledger.replay() == ledger.state
 
 
 def test_merkle_root_changes_when_leaf_changes():

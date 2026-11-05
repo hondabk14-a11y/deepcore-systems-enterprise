@@ -12,8 +12,9 @@ from CORE.deepcore_runtime import Block, Event, Transaction, ZERO_HASH, merkle_r
 VALIDATORS = ["validator_A", "validator_B", "validator_C", "validator_D"]
 
 
-def setup():
-    identities = {v: Ed25519Identity.generate() for v in VALIDATORS}
+def setup(identities=None):
+    if identities is None:
+        identities = {v: Ed25519Identity.generate() for v in VALIDATORS}
     registry = ValidatorKeyRegistry()
     for v, identity in identities.items():
         registry.register(v, identity.public_key_bytes)
@@ -132,11 +133,22 @@ def test_revoked_validator_rejected():
 
 
 def test_transition_is_deterministic():
-    m1, _, _, block1, votes1, _ = setup()
-    m2, _, _, block2, votes2, _ = setup()
+    m1, registry1, identities, block1, votes1, _ = setup()
+    # Independent replicas must receive identical cryptographic inputs.
+    # Fresh keys change transaction signatures and consequently event roots.
+    m2, registry2, _, block2, votes2, _ = setup(identities)
+    assert m1 is not m2 and registry1 is not registry2
+    assert block1 == block2 and votes1 == votes2
     assert m1.propose("validator_A", block1, 0) == m2.propose("validator_A", block2, 0)
     assert m1.state.phase == m2.state.phase == Phase.PREPARE
     qc1 = m1.prepare(block1, 0, votes1)
     qc2 = m2.prepare(block2, 0, votes2)
     assert qc1.proposal_hash == qc2.proposal_hash
     assert m1.state.phase == m2.state.phase == Phase.PRE_COMMIT
+    assert qc1.digest == qc2.digest and m1.state == m2.state
+    precommit1 = m1.pre_commit(block1, 0, votes1)
+    precommit2 = m2.pre_commit(block2, 0, votes2)
+    assert precommit1.digest == precommit2.digest
+    assert m1.state == m2.state
+    assert m1.state.phase == m2.state.phase == Phase.COMMIT
+    assert m1.commit(block1, 0) == m2.commit(block2, 0)
