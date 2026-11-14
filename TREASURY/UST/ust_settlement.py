@@ -49,6 +49,8 @@ class USTSettlementNode:
 
         history = self._events.setdefault(tx_id, [])
         if state is SettlementState.REJECTED:
+            if history and history[-1].state is SettlementState.REJECTED:
+                return history[-1]
             if history and history[-1].state is SettlementState.CONFIRMED:
                 raise ValueError("confirmed settlement cannot be rejected")
         elif not history:
