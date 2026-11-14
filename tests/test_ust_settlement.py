@@ -45,3 +45,15 @@ def test_identity_profile():
     assert USTSettlementNode.LOGICAL_NAME == "UST-0001"
     assert USTSettlementNode.CONSENSUS_WEIGHT == 35
     assert USTSettlementNode.TRUST_BASELINE == 1.0
+
+
+def test_retrying_rejection_preserves_terminal_history():
+    node = USTSettlementNode()
+    node.apply("retry", SettlementState.CREATED)
+    rejection = node.apply("retry", SettlementState.REJECTED)
+    history = node.history("retry")
+
+    assert node.apply("retry", SettlementState.REJECTED) == rejection
+    assert node.history("retry") == history
+    with pytest.raises(ValueError, match="rejected settlement cannot advance"):
+        node.apply("retry", SettlementState.VALIDATED)
